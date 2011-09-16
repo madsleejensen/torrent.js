@@ -1,23 +1,27 @@
 var Events = require("events");
 var Crypto = require("crypto");
+var Block = require('block');
 
-module.exports = function piece (index, hash, length, callback) {
+module.exports = function Piece (index, hash, length) {
 	
 	var instance = new Events.EventEmitter();
-		instance.loaded = false;
-		instance.index = index;
-		instance.length = length;
-		instance.blocks = [];
-		instance.completed = false;
-		instance.hash = hash;
-		instance.chunkSize = Math.pow(2, 10);
+	instance.loaded = false;
+	instance.index = index;
+	instance.length = length;
+	instance.blocks = [];
+	instance.completed = false;
+	instance.hash = hash;
+	instance.chunkSize = Math.pow(2, 10);
 	
-	instance.addBlock = function (offset, block) {
+	instance.addBlock = function (offset, data) {
+		
+
 		if (instance.completed) {
 			return;
 		}
+
 		var chunk = Math.floor(offset / instance.chunkSize);
-		instance.blocks[chunk] = block;
+		instance.blocks[chunk].setValue(data);
 		
 		if (isComplete()) {
 			if (!isValid()) {
@@ -25,36 +29,63 @@ module.exports = function piece (index, hash, length, callback) {
 			}
 			else {
 				instance.completed = true;
-				instance.emit("piece_completed");
+				instance.emit("piece:completed");
 			}
 		}
 	};
 
-	instance.getBlockOffsets = function (limit) {
-		var missingChunks = [];
-		var chunks = Math.ceil(instance.length / instance.chunkSize);
-		for (var chunk = 0; chunk < chunks; chunk++) {
-			if (instance.blocks[chunk] == null) {
-				var begin = chunk * instance.chunkSize;
-				var length = instance.chunkSize;
+	instance.getMissingBlocks = function () {
+		var result = [];
 
-				if ((begin + length) > instance.length) {
-					length = instance.length - begin;
-				}
-
-				missingChunks.push({
-					begin: begin,
-					length: length
-				});
+		instance.blocks.forEach(function(block) {
+			if (!block.completed) {
+				result.push(offset);
 			}
+		});
+
+		return result;
+	};
+
+	instance.createStream = function (destination) {
+		var task = new TaskQueue();
+
+		if (instance.completed) {
+			task.queue (function (callback) {
+				piece.getValue(function(data) {
+					destination.write(data);
+					callback();
+				});
+			});
+		}
+		else {	
+			instance.blocks.forEach(function(block) {
+				task.queue(function (callback) {
+					// getvalue should delay callback till block data is received.
+					if (block.getValue(function (data) { 
+						destination.write(data);
+						callback();
+					}));
+				});
+			});	
 		}
 
-		return missingChunks;
-	}; 
+		return task;
+	};
 
-	instance.getValue = function () {
+	instance.getValue = function (callback) {
 		if (instance.completed) {
-			return instance.blocks.join("");
+			mStorage.readPiece (instance, callback);
+		}
+		else {
+			for (var i = 0; i < instance.blocks.length; i++) {
+				if (typeof instance.blocks[i] == 'undefined') {
+					break;
+				}
+
+				getBlock(i, function (error, chunk, data) {
+					
+				});
+			}
 		}
 	}
 
@@ -83,7 +114,31 @@ module.exports = function piece (index, hash, length, callback) {
 		return hash === instance.hash;
 	}
 
-	callback();
+	function createBlockOffsets () {
+		var offsets = [];
+		var chunks = Math.ceil(instance.length / instance.chunkSize);
+		var blocks = [];
+		for (var chunk = 0; chunk < chunks; chunk++) {
+			var begin = chunk * instance.chunkSize;
+			var length = instance.chunkSize;
+
+			if ((begin + length) > instance.length) {
+				length = instance.length - begin;
+			}
+			
+			blocks[chunk] = new Block ({
+				piece: instance,
+				chunk: chunk,
+				begin: begin,
+				length: length,
+				peers: []
+			});
+		}
+
+		return blocks;
+	}; 
+
+	instance.blocks = createBlockOffsets();
 
 	return instance;
 };

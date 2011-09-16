@@ -1,0 +1,65 @@
+
+var PieceManager = function()
+{
+	instance.pieces = [];
+	instance.getNextPieceInLine = function() {
+		if (pieces[currentPieceIndex].isComplete)
+		{
+			currentPieceIndex++;
+			return pieces[index];	
+		}
+	};
+	instance.currentPieceIndex = 0;
+	instance.createStream = function () // create a stream, and pipe all piece content to it.
+	{
+		var stream = new Stream();
+
+		for each (pieces as piece)
+		{
+			if (piece.active) 
+			{
+				stream.queue (function () {
+					stream.pipe(piece.createStream());
+				});
+			}
+			else 
+			{
+				break;
+			}
+		}
+	};
+
+	function loadpieces() {
+		// initialize pieces by torrent and inflate them with existing content.
+
+		for () 
+		{
+			var piece = new Piece();
+				piece.on('change', function() { // listen to all pieces, when they receive data, pipe it to the active streams. (keep track on last piece index, to make sure a sequential order.);
+					foreach (streams) 
+					{
+						stream.pipe(piece.createStream);
+					}
+				})
+		}
+	}
+};
+
+var Piece = function ()
+{
+	instance.blocks = [];
+	instance.addBlock  = function () {};
+	instance.createStream = function () {
+		return new PieceStream(instance);
+	};
+}
+
+var maanger = new PieceManager();
+var stream = manager.createStream();
+	stream.on('data', function () 
+	{
+		stream.pipe(webplayer.socket);
+	});
+
+
+
