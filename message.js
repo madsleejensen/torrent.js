@@ -18,15 +18,13 @@ exports.factory = {
 	// http://wiki.theory.org/BitTorrentSpecification#Handshake
 	// handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
 	handshake: function (torrent) {
-		var identifier = "BitTorrent protocol";
-		var handshake = new Buffer(49 + identifier.length);
-		var infohash = new Buffer(torrent.info_hash, 'hex');
-		var offset = 0;
 
-		handshake.writeUInt8(identifier.length, 0, true);
-		offset += 1;
-		handshake.write(identifier, 1, identifier.length, 'binary');
-		offset += identifier.length;
+		var identifier = new Buffer("BitTorrent protocol");
+		var handshake = new Buffer(49 + identifier.length);
+		handshake.writeInt8(identifier.length, 0);
+		identifier.copy(handshake, 1);
+
+		var offset = identifier.length + 1;
 
 		handshake[offset] = 0; // reserved byte;
 		handshake[offset + 1] = 0; // reserved byte;
@@ -36,11 +34,10 @@ exports.factory = {
 		handshake[offset + 5] = 0; // reserved byte;
 		handshake[offset + 6] = 0; // reserved byte;
 		handshake[offset + 7] = 0; // reserved byte;
-		offset += 8; // reserved 8 bytes;
 
-		infohash.copy(handshake, offset);
-		offset += infohash.length; // 20 bytes
-		handshake.write(torrent.peer_id, offset, 20);
+		torrent.infomation.info_hash_buffer.copy(handshake, offset + 8); // info hash 20 bytes.
+		torrent.infomation.peer_id_buffer.copy(handshake, offset + 28); // peer id 20 bytes
+
 		return handshake;
 	}	
 };
@@ -79,7 +76,7 @@ exports.Handler = function MessageHandler (socket, connectionInfo) {
 				return;
 			}
 
-			var messageLength = buffer.readInt32BE(0); 
+			var messageLength = buffer.readUInt32BE(0); 
 			var totalLength = messageLength + 4;
 
 			if (buffer.length < totalLength) {
@@ -90,7 +87,7 @@ exports.Handler = function MessageHandler (socket, connectionInfo) {
 			mMessageBuffer = mMessageBuffer.substring(totalLength);
 
 			if (messageLength == 0) { // keep alive
-				console.log('%s:%d: keep alive', connectionInfo.ip_string, connectionInfo.port);
+				//console.log('%s:%d: keep alive', connectionInfo.ip_string, connectionInfo.port);
 				return;
 			}
 
@@ -109,7 +106,7 @@ exports.Handler = function MessageHandler (socket, connectionInfo) {
 					instance.emit(exports.CHOKE);
 				break;
 
-				case exports.UNCHOKE: // unchoke: <len=0001><id=1>
+				case exports.UNCHOKED: // unchoke: <len=0001><id=1>
 					instance.emit(exports.UNCHOKE);
 				break;
 
@@ -162,7 +159,7 @@ exports.Handler = function MessageHandler (socket, connectionInfo) {
 				break;
 
 				default: 
-					console.log("unknown message");
+					console.log('unknown: [id: %d] [length: %d]', id, messageLength, mMessageBuffer);
 				break;
 			}
 

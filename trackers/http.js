@@ -1,14 +1,14 @@
 var Http = require('http');
 var QueryString = require('querystring');
-var BufferUtils = require('./../buffer-utils');
-var Bencoder = require('./../bencoder');
+var Bencoder = require('bencoder');
 var Compact = require('./../compact');
 var Peer = require('./../peer');
 var Events = require("events");
+var U = require('U');
 
 var MAXIMUM_FAILED_ATTEMPTS = 3;
 
-module.exports = function HttpTracker (url) {
+exports.create = function HttpTracker (url) {
 	
 	var instance = new Events.EventEmitter();
 	instance.url = url;
@@ -83,16 +83,14 @@ module.exports = function HttpTracker (url) {
 			port: 8123,
 			uploaded: 0,
 			downloaded: 0,
-			numwant: 250,
+			numwant: 1000,
 			compact: 1
 		};
 
-		var binaryHash = new Buffer(torrent.info_hash, 'hex');
-		
 		return {
 			host: url.hostname,
 			port: url.port,
-			path: url.pathname + '?' + QueryString.stringify(data) + '&info_hash=' + BufferUtils.encodeToHttp(binaryHash),
+			path: url.pathname + '?' + QueryString.stringify(data) + '&info_hash=' + U.buffer.encodeToHttp(torrent.info_hash_buffer),
 			method: 'GET'
 		};
 	}

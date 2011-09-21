@@ -4,14 +4,14 @@ var Torrent = require('./torrent');
 process.setgid(20);
 process.setuid(501);
 
-Torrent.create('test/thor.torrent', function (error, torrent) {
+Torrent.create('test/vampire.torrent', function (error, torrent) {
 	if (error) {
-		console.log(error);
+		throw error;
 		return;	
 	}
 
 	torrent.download();
 
-	//var datastream = torrent.createDataStream(process.stdout);
+	//var datastream = torrent.createStream(process.stdout);
 	//datastream.run();
 });

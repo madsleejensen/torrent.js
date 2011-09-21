@@ -1,5 +1,7 @@
 var Events = require('events');
 
+var MAXIMUM_ASSIGNED_PEERS = 3;
+
 module.exports = function Block (params) {
 
 	var instance = new Events.EventEmitter();
@@ -34,11 +36,27 @@ module.exports = function Block (params) {
 			return;
 		}
 
-		instance.data = data;
 		instance.completed = true;
-		instance.emit('block:completed');
+		instance.data = data;
+		instance.emit('block:completed', instance);
 		instance.removeAllListeners(); // cleanup.
+		//console.log('block [index: %d][chunk: %d] completed',instance.piece.index, instance.chunk);
 	}
+
+	// used if piece is corrupted.
+	instance.reset = function () {
+		instance.data = null;
+		instance.completed = false;		
+	}
+
+	// to prevent too many peers trying to download the same block.
+	instance.isFull = function () {
+		if (instance.peers.length >= MAXIMUM_ASSIGNED_PEERS) {
+			return true;
+		}
+
+		return false;
+	};
 
 	for (var member in params) { // initialize
 		instance[member] = params[member];		

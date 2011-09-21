@@ -1,12 +1,13 @@
 var FileSystem = require('fs');
 var Step = require('step');
-var Bencoder = require('./bencoder');
+var Bencoder = require('bencoder');
 var Crypto = require('crypto');
-var PieceManager = require('./piece_manager');
-var PeerManager = require('./peer_manager');
-var TrackerManager = require('./tracker_manager');
+var PieceManager = require('./managers/piece_manager');
+var PeerManager = require('./managers/peer_manager');
+var TrackerManager = require('./managers/tracker_manager');
 var Storage = require('./storage');
 var TaskQueue = require('./taskqueue');
+var U = require('U');
 
 /**
  * Represents a *.torrent to be downloaded.
@@ -30,7 +31,7 @@ exports.create = function Torrent (filepath, callback) {
 			}
 
 			instance.peerManager.getActive().forEach(function(peer) {
-				peer.download();
+				peer.download(instance);
 			});
 		}, 500);
 	};
@@ -40,9 +41,9 @@ exports.create = function Torrent (filepath, callback) {
 		var task = new TaskQueue();
 		
 		// queue up piece tasks.
-		mPieces.forEach(function(piece) {
+		instance.pieceManager.pieces.forEach(function(piece) {
 			task.queue(function (callback) {
-				var pieceStream = piece.createPieceStream(destinationStream);
+				var pieceStream = piece.createStream(destinationStream);
 				pieceStream.on('end', callback); 
 				pieceStream.run();
 			});
@@ -57,8 +58,9 @@ exports.create = function Torrent (filepath, callback) {
 		},
 		function fileDecoded (error, infomation) {
 			if (error) throw error;
-			
-			infomation.peer_id = 'qwertyuiopasdfghjxla';
+			var peerId = U.generateId(20);
+			infomation.peer_id = peerId;
+			infomation.peer_id_buffer = new Buffer(peerId);
 			instance.infomation = infomation;
 			this();
 		},
@@ -102,8 +104,10 @@ function decodeTorrentFile (filepath, callback) {
 		if (error) callback(error);
 
 		var torrent = Bencoder.decode(data);
-			torrent.info_hash = createInfoHash(torrent);
-
+		var hash = createInfoHash(torrent);
+		torrent.info_hash = hash;
+		torrent.info_hash_buffer = new Buffer(hash, 'hex');
+				
 		callback(null, torrent);
 	});
 }

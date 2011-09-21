@@ -23,7 +23,7 @@ module.exports = function TaskQueue () {
 		mIsRunning = true;
 
 		var task = mTaskQueue.shift();
-		task.run(onTaskCompleted);
+		task(onTaskCompleted);
 	}
 
 	function onTaskCompleted (error, data) {
