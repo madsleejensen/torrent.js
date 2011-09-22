@@ -4,11 +4,13 @@ var Torrent = require('./torrent');
 process.setgid(20);
 process.setuid(501);
 
-Torrent.create('test/vampire.torrent', function (error, torrent) {
+Torrent.create('test/thor.torrent', function (error, torrent) {
 	if (error) {
 		throw error;
 		return;	
 	}
+
+	console.log(torrent.fileManager.files);
 
 	torrent.download();
 

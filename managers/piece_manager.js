@@ -4,6 +4,7 @@
 var Step = require('step');
 var TaskQueue = require('./../taskqueue');
 var Piece = require('./../piece');
+var U = require('U');
 
 var PIECE_HASH_BYTE_LENGTH = 20;
 
@@ -46,32 +47,23 @@ exports.create = function PieceManager (torrent, callback) {
 
 	Step( // initialize
 		function createPieces () {
-
-			// http://fileformats.wikia.com/wiki/Torrent_file
-			if (typeof torrent.infomation.info.length != 'undefined') { // single file format;
-			}
-			else if (typeof torrent.infomation.info.files != 'undefined') { // multi file format;
-				//console.log(torrent.info.files);	
-			}
-
 			var piecesCount = torrent.infomation.info.pieces.length / PIECE_HASH_BYTE_LENGTH;
-			var length = torrent.infomation.info['piece length'];
+			var pieceLength = torrent.infomation.info['piece length'];
 			var pieces = [];
 
 			for (var index = 0; index < piecesCount; index++) {
 				var offset = index * PIECE_HASH_BYTE_LENGTH;
 				var hash = torrent.infomation.info.pieces.substr(offset, PIECE_HASH_BYTE_LENGTH);
-				var piece = Piece.create(index, hash, length);
+				var piece = Piece.create(index, hash, pieceLength);
 				pieces[index] = piece;
 			}
-	
-			console.log('piece length: %d. total pieces: %d', length, piecesCount);
 
-			this (null, pieces);
-		},
-		function inflate (error, pieces) {
-			if (error) throw error;
+			console.log('piece length: %d. total pieces: %d', pieceLength, piecesCount);
 			instance.pieces = pieces;
+			this (null);
+		},
+		function inflate (error) {
+			if (error) throw error;
 			//return;
 			return this();
 			//var parallel = this.parallel();
@@ -81,7 +73,7 @@ exports.create = function PieceManager (torrent, callback) {
 			});*/
 		},
 		function ready (error) {
-			callback (null, instance);
+			callback (error, instance);
 		}
 	);
 };

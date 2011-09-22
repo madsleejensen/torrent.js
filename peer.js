@@ -6,7 +6,7 @@ var U = require('U');
 // @todo implement fast track http://bittorrent.org/beps/bep_0006.html
 
 var CONNECTION_TIMEOUT = 5000;
-var MAXIMUM_PIECE_CHUNK_REQUESTS = 6; // number of chunk requests pr. peer. (http://wiki.theory.org/Talk:BitTorrentSpecification#Algorithms:_Queuing)
+var MAXIMUM_PIECE_CHUNK_REQUESTS = 8; // number of chunk requests pr. peer. (http://wiki.theory.org/Talk:BitTorrentSpecification#Algorithms:_Queuing)
 var PEER_REQUEST_TIMEOUT = 3000;
 
 module.exports = function peer (connectionInfo) {

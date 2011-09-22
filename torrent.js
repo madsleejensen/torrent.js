@@ -5,6 +5,7 @@ var Crypto = require('crypto');
 var PieceManager = require('./managers/piece_manager');
 var PeerManager = require('./managers/peer_manager');
 var TrackerManager = require('./managers/tracker_manager');
+var FileManager = require('./managers/file_manager');
 var Storage = require('./storage');
 var TaskQueue = require('./taskqueue');
 var U = require('U');
@@ -73,6 +74,14 @@ exports.create = function Torrent (filepath, callback) {
 			var callback = this;
 			PieceManager.create(instance, function(error, manager) {
 				instance.pieceManager = manager;
+				callback (error);
+			});
+		},
+		function initFileManager (error) {
+			if (error) throw error;
+			var callback = this;
+			FileManager.create(instance, function (error, manager) {
+				instance.fileManager = manager;
 				callback (error);
 			});
 		},
