@@ -90,7 +90,7 @@ exports.create = function PieceManager (torrent, callback) {
 				pieces[index] = piece;
 			}
 
-			console.log('piece length: %d. total pieces: %d', pieceLength, piecesCount);
+			console.log('pieces: [length: %d] [count: %d] \n', pieceLength, piecesCount);
 			instance.pieces = pieces;
 		},
 		function inflate (error) {

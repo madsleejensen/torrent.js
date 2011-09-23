@@ -14,16 +14,12 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 	instance.completed = false;
 	instance.hash = hash;
 
-	instance.createStream = function (destination, offset) {
+	instance.createStream = function (destination) {
 		var task = new TaskQueue();
 
 		if (instance.completed) {
 			task.queue (function (callback) {
 				instance.getValue(function(error, data) {
-					if (offset) {
-						data = data.slice(offset.start, offset.end);
-					}
-
 					destination.write(data);
 					callback();
 				});
@@ -45,21 +41,20 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 	};
 
 	instance.getValue = function (callback) {
-		/*if (instance.completed) {
-			mStorage.readPiece (instance, callback);
+		if (!instance.completed) {
+			throw new Error('piece.getValue() called in incomplete piece. [index: %d]', piece.index);
 		}
-		else {*/
-			var buffer = new Buffer(instance.length);
-			var total = 0;
-			for (var i = 0; i < instance.blocks.blocks.length; i++) {
-				var block = instance.blocks.blocks[i];
-				block.data.copy(buffer, block.begin);	
-				total += block.data.length;
-			}
 
-			//console.log('piece: [length: %d] [actual-lenght: %d]', instance.length, total);
-			callback(null, buffer);
-		//}
+		var buffer = new Buffer(instance.length);
+		var total = 0;
+		for (var i = 0; i < instance.blocks.blocks.length; i++) {
+			var block = instance.blocks.blocks[i];
+			block.data.copy(buffer, block.begin);	
+			total += block.data.length;
+		}
+
+		//console.log('piece: [length: %d] [actual-lenght: %d]', instance.length, total);
+		callback(null, buffer);
 	}
 
 	function onBlockCompleted (block) {

@@ -12,7 +12,7 @@ Torrent.create('test/thor.torrent', function (error, torrent) {
 		return;	
 	}
 
-	var file = torrent.fileManager.files[6];
+	var file = torrent.fileManager.files[1];
 	torrent.download(file);
 
 	//var file = torrent.fileManager.files[4];

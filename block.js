@@ -1,6 +1,6 @@
 var Events = require('events');
 
-var MAXIMUM_ASSIGNED_PEERS = 50;
+var MAXIMUM_ASSIGNED_PEERS = 10;
 
 module.exports = function Block (params) {
 
@@ -41,7 +41,15 @@ module.exports = function Block (params) {
 		instance.emit('block:completed', instance);
 		instance.removeAllListeners(); // cleanup.
 		//console.log('block [index: %d][chunk: %d] completed',instance.piece.index, instance.chunk);
-	}
+	};
+
+	// check wether the block is containing data for a given offset.
+	instance.isWithinOffset = function (fileOffset) {
+		if (fileOffset > instance.begin && fileOffset < (instance.begin + instance.length)) {
+			return true;
+		}
+		return false;
+	};
 
 	// used if piece is corrupted.
 	instance.reset = function () {

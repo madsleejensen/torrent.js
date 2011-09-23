@@ -1,4 +1,5 @@
 var Events = require('events');
+var TaskQueue = require('./taskqueue');
 
 exports.create = function Downloader (torrent, callback) {
 	var instance = new Events.EventEmitter();
@@ -12,6 +13,22 @@ exports.create = function Downloader (torrent, callback) {
 			var item = new DownloadItem (requirement);
 			instance.items.push(item);
 		}
+	};
+
+	instance.createStream = function (destination) {
+		var task = new TaskQueue();
+
+		instance.items.forEach(function(item) {
+			task.queue (function (callback) {
+				var itemTask = item.createStream(destination);	
+				itemTask.on('end', function () {
+					callback ();
+				});
+				itemTask.run();
+			});
+		});
+		
+		return task;
 	};
 
 	instance.getNextBlocks = function (peer, limit) {
@@ -75,27 +92,45 @@ var DownloadItem = function (requirement) {
 	instance.offset = requirement.offset;
 	instance.piece = requirement.piece;
 	instance.completed = false;
-	/*
-	instance.createStream = function (destination, offset) {
+	
+	console.log(instance.offset);
+
+	instance.createStream = function (destination) {
 		var task = new TaskQueue();
 
-		if (instance.completed) {
+		if (!instance.blocks) {
 			task.queue (function (callback) {
-				instance.getValue(function(error, data) {
-					if (offset) {
-						data = data.slice(offset.start, offset.end);
-					}
-
-					destination.write(data);
+				var pieceQueue = instance.piece.createStream(destination);
+				pieceQueue.on('end', function () {
 					callback();
 				});
+				pieceQueue.run();
 			});
 		}
 		else {	
-			instance.blocks.blocks.forEach(function(block) {
+			instance.blocks.forEach(function(block) {
 				task.queue(function (callback) {
-					// getvalue should delay callback till block data is received.
 					if (block.getValue(function (error, data) {
+						// block's data overflow what is requested, trim it to match.
+						if (instance.offset.start !== null && block.isWithinOffset(instance.offset.start)) {
+							var skip = instance.offset.start - block.begin;
+							data = data.slice(skip);
+						}
+
+						if (instance.offset.end !== null && block.isWithinOffset(instance.offset.end)) {
+							var remove = (block.begin + block.length) - instance.offset.end; // bytes to remove from the current block's length.
+
+							//console.log('REMOVE', remove, data.length);
+
+							var length = data.length - remove;
+							data = data.slice(0, length);
+						}
+						/*
+						console.log("------");
+						console.log(instance.offset, instance.offset.start - instance.offset.end);
+						console.log(block.begin, instance.offset.start - block.begin);
+						console.log(block.begin, block.length, block.begin + block.length, instance.offset.end - (block.begin + block.length));
+						*/
 						destination.write(data);
 						callback();
 					}));
@@ -104,13 +139,13 @@ var DownloadItem = function (requirement) {
 		}
 
 		return task;
-	};*/
+	};
 
 	instance.getFreeBlocks = function () {
 		var result = [];
 
 		if (instance.blocks === null) { // no specific blocks, means that the entire piece is required.
-			return piece.blocks.getMissing();
+			return instance.piece.blocks.getMissing();
 		}
 		else {
 			instance.blocks.forEach(function(block) {
@@ -132,7 +167,7 @@ var DownloadItem = function (requirement) {
 		if (isCompleted()) {
 			instance.completed = true;
 			instance.emit('download_item:completed', instance);
-			console.log('download_item completed.');
+			//console.log('download_item completed.');
 		}
 	}
 

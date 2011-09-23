@@ -4,6 +4,7 @@ var File = require('./../file');
 exports.create = function (torrent) {
 	var instance = {};
 	instance.fileSize = null;
+	instance.files = null;
 
 	instance.getTotalFileSize = function () {
 		if (instance.fileSize === null) {
@@ -28,6 +29,8 @@ exports.create = function (torrent) {
 		var pieceLength = torrent.infomation.info['piece length'];
 		var files = [];
 		
+		console.log('files: ');
+
 		// http://fileformats.wikia.com/wiki/Torrent_file
 		if (typeof torrent.infomation.info.length != 'undefined') { // single file format;
 			console.log(torrent.infomation.info.length);
@@ -55,7 +58,11 @@ exports.create = function (torrent) {
 
 					var offset = {
 						start: null, 
-						end: null
+						end: null/*,
+						file: {
+							start: fileOffset,
+							end: fileEndOffset
+						}*/
 					};
 
 					if (index === startIndex) {
@@ -75,7 +82,11 @@ exports.create = function (torrent) {
 				var file = new File(torrent, path, description.length, requirements);
 				files.push(file);
 				fileOffset += description.length;
+
+				console.log('\t file: [name: %s] [size: %s] [index: %d]', file.path, file.length, files.length - 1);
 			});
+
+			console.log('');
 		}
 
 		return files;

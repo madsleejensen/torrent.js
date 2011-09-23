@@ -23,7 +23,7 @@ exports.create = function TrackerManager (torrent, callback) {
 			tracker.start(torrent.infomation);
 		});
 
-		setInterval(instance.forceStart, 5000);
+		setInterval(instance.forceStart, 8000);
 	};
 
 	// Force tracker update, that does not take 'min-inteval' into account.
@@ -42,15 +42,19 @@ exports.create = function TrackerManager (torrent, callback) {
 	Step (
 		function init () {
 			var uris = torrent.infomation['announce-list'];
-			console.log(uris);
 			var trackers = [];
+
+			console.log('trackers: ');
 
 			uris.forEach(function(uri) {
 				var	tracker = Tracker.create(uri[0]);
 				if (tracker != null) {
+					console.log('\t tracker: [uri: %s]', uri[0]);
 					trackers.push(tracker);		
 				}
 			});
+
+			console.log('');
 
 			instance.trackers = trackers;
 

@@ -24,9 +24,16 @@ exports.create = function Torrent (filepath, callback) {
 	instance.downloader = null;
 
 	instance.download = function (file) {
-		console.log('downloading: %s : %s', filepath, instance.infomation.info.name, file.path);
+		console.log('downloading: [file: %s] [size: %s]', file.path, file.length);
 		instance.trackerManager.start();
 		instance.downloader.download(file);
+
+		var stream = FileSystem.createWriteStream('downloads/' + file.path, {flags: 'w+', mode: 0777});
+		var taskqueue = instance.downloader.createStream(stream);
+		taskqueue.on('end', function () {
+			console.log('file completed: [name: %s]', file.path);
+		});
+		taskqueue.run();
 
 		// make sure all active peers always working on something.
 		setInterval(function() {
@@ -64,6 +71,9 @@ exports.create = function Torrent (filepath, callback) {
 			infomation.peer_id = peerId;
 			infomation.peer_id_buffer = new Buffer(peerId);
 			instance.infomation = infomation;
+
+			console.log('\ntorrent: [file: %s] [name: %s]', filepath, instance.infomation.info.name);
+
 			this();
 		},
 		function buildFilemanager (error) {

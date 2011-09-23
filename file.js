@@ -1,6 +1,4 @@
-var TaskQueue = require ('./taskqueue');
 var Events = require ('events');
-var BlockManager = require('./managers/block_manager');
 
 module.exports = function (torrent, path, length, requirements) {
 	var instance = new Events.EventEmitter();
@@ -9,31 +7,7 @@ module.exports = function (torrent, path, length, requirements) {
 	instance.requirements = requirements;
 	instance.completed = false;
 
-	instance.createStream = function (destinationStream) {
-		var task = new TaskQueue();
-		
-		// queue up piece tasks.
-		for (var i = 0; i < instance.pieces.length; i++) {
-			task.queue(function (callback) {
-				var offset = null;
-
-				/*
-				if (i === 0) { // first piece.
-					offset = {start: instance.offset.relative_start};	
-				}
-				else if (i === (instance.pieces.length - 1)) { // last piece.
-					offset = {end: instance.offset.relative_end};
-				}*/
-
-				var pieceStream = piece.createStream(destinationStream);
-				pieceStream.on('end', callback); 
-				pieceStream.run();
-			});	
-		}
-
-		return task;
-	};
-
+	/*
 	instance.download = function () {
 		torrent.download(instance);
 		setInterval(onPieceCompleted, 2000);
@@ -72,8 +46,8 @@ module.exports = function (torrent, path, length, requirements) {
 		torrent.pieceManager.removeListener('piece:completed', onPieceCompleted);
 		instance.emit('file:completed', instance);
 	};
-
-	torrent.pieceManager.on('piece:completed', onPieceCompleted);
+	*/
+	//torrent.pieceManager.on('piece:completed', onPieceCompleted);
 
 	return instance;
 };

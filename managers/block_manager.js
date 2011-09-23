@@ -17,6 +17,7 @@ exports.create = function (torrent, piece, callback) {
 			if (offset.start) {
 				blockStart = Math.floor(offset.start / instance.chunkSize);
 			}
+
 			if (offset.end) {
 				blockEnd = Math.floor(offset.end / instance.chunkSize);
 			}
@@ -27,6 +28,7 @@ exports.create = function (torrent, piece, callback) {
 		for (var chunk = blockStart; chunk <= blockEnd; chunk++) {
 			result.push(instance.blocks[chunk]);
 		}
+
 		return result;
 	};
 

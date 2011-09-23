@@ -6,7 +6,7 @@ var U = require('U');
  */
 
 var MAXIMUM_ACTIVE_PEERS = 800; // -1 == unlimited
-var MAXIMUM_CONNECTING_PEERS = 80;
+var MAXIMUM_CONNECTING_PEERS = 100;
 var MAXIMUM_CONNECTION_ATTEMPTS = 1;
 
 exports.create = function (torrent, callback) {
