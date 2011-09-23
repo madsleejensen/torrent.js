@@ -7,7 +7,6 @@ exports.create = function (torrent, callback) {
 	
 	function createFiles () {
 		var pieceLength = torrent.infomation.info['piece length'];
-		var pieceManager = torrent.pieceManager;
 		var files = [];
 		
 		// http://fileformats.wikia.com/wiki/Torrent_file
@@ -20,16 +19,38 @@ exports.create = function (torrent, callback) {
 			
 			fileDescriptions.forEach(function (description) {
 				var path = description.path.join('/');
-				var endOffset = fileOffset + description.length;
+				var fileEndOffset = fileOffset + description.length;
 				var startIndex = Math.floor(fileOffset / pieceLength);
-				var endIndex = Math.floor(endOffset / pieceLength);
-				var pieces = [];
+				var endIndex = Math.floor(fileEndOffset / pieceLength);
+
+				var startOffset = fileOffset - (startIndex * pieceLength); // how many bytes to skip in the first piece.
+				var endOffset = fileEndOffset - (endIndex * pieceLength); // the end byte position of the piece.
+
+				var requirements = [];
 
 				for (var index = startIndex; index <= endIndex; index++) {
-					pieces.push(pieceManager.pieces[index]);
+					var requirement = {
+						piece: torrent.pieceManager.pieces[index]
+					};
+
+					// NÆSTE SKRIDT FÅ DEN TIL KUN AT HENTE BLOCKS DER ER REQUIRED.
+					var offset = {
+						start: null, 
+						end: null
+					};
+
+					if (index === startIndex) {
+						offset.start = startOffset;
+					}
+					if (index === endIndex) {
+						offset.end = endOffset;
+					}
+
+					requirement.offset = offset;
+					requirements.push(requirement);
 				}
 
-				var file = new File(path, description.length, pieces);
+				var file = new File(torrent, path, description.length, requirements);
 				files.push(file);
 				fileOffset += description.length;
 			});

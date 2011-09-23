@@ -85,7 +85,6 @@ module.exports = function peer (connectionInfo) {
 	};
 	
 	instance.download = function () {
-
 		if (instance.choked ||
 			instance.connectionInfo.state == 'closed' || 
 			mRequestingBlocks.length >= MAXIMUM_PIECE_CHUNK_REQUESTS) {
@@ -93,40 +92,20 @@ module.exports = function peer (connectionInfo) {
 		}
 
 		var slotsAvailable = MAXIMUM_PIECE_CHUNK_REQUESTS - mRequestingBlocks.length;
-		var exclude = []; // list of pieces not to ignore in piece pieceManager.getNextAvailablePiece();
+		var blocks = instance.torrent.pieceManager.getNextBlocks(instance, slotsAvailable);
 
-		while (slotsAvailable > 0) {
-			var piece = instance.torrent.pieceManager.getNextAvailablePiece(instance, exclude);
-			if (!piece) {
-				break;
-			}
+		blocks.forEach(function (block) {
+			block.peers.push(instance);
+			var track = {
+				block: block,
+				timeout: setTimeout (function () {
+					cleanupBlockTrack (track);
+				}, PEER_REQUEST_TIMEOUT)
+			};
 
-			var blocks = piece.getMissingBlocks();
-			// no missing blocks, probably because all blocks are currently "full" @see block.isFull();
-			if (blocks.length <= 0) {
-				exclude.push(piece);
-				continue;
-			}
-
-			for (var index = 0; index < blocks.length && slotsAvailable > 0; index++) {
-				var block = blocks[index];
-				block.peers.push(instance);
-
-				(function scope () {
-					var track = {
-						block: block,
-						timeout: setTimeout (function () {
-							cleanupBlockTrack (track);
-						}, PEER_REQUEST_TIMEOUT)
-					};
-
-					mRequestingBlocks.push(track);
-					instance.sender.request(piece.index, block.begin, block.length);
-				})();
-
-				slotsAvailable--;
-			}
-		}
+			mRequestingBlocks.push(track);
+			instance.sender.request(block.piece.index, block.begin, block.length);
+		});
 	};
 
 	instance.reset = function () {
@@ -255,8 +234,7 @@ module.exports = function peer (connectionInfo) {
 					mSocket.write(buffer);
 				}
 				catch (e) {
-					console.log('peer->sender->send');
-					console.log(e);
+					console.log('peer->sender->send', e.message);
 				}
 			}
 		}

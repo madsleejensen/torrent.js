@@ -5,22 +5,15 @@ var Step = require('step');
 var TaskQueue = require('./../taskqueue');
 var Piece = require('./../piece');
 var U = require('U');
+var Events = require('events');
 
 var PIECE_HASH_BYTE_LENGTH = 20;
 
 exports.create = function PieceManager (torrent, callback) {
-	var instance = {};
+	var instance = new Events.EventEmitter();
 	instance.pieces = [];
 	instance.storage = torrent.storage;
-
-	instance.getNextPiece = function () {
-		for (var index in instance.pieces) {
-			var piece = instance.pieces[index];
-			if (!piece.completed) {
-				return piece;
-			}
-		}
-	};
+	instance.currentFile = null;
 
 	// find the next piece to download that is available for the peer.
 	instance.getNextAvailablePiece = function (peer, exclude) {
@@ -31,7 +24,14 @@ exports.create = function PieceManager (torrent, callback) {
 
 		for (var i = 0; i < available.length; i++) {
 			var index = available[i];
+			var piece = instance.pieces[index];
+
 			if (instance.pieces[index].completed) {
+				continue;
+			}
+
+			//@todo this is alot of iteration. could do with some tweaking.
+			if (instance.currentFile && !U.array.contains(instance.currentFile.requirements, {'piece.index': piece.index})) {
 				continue;
 			}
 
@@ -39,10 +39,41 @@ exports.create = function PieceManager (torrent, callback) {
 			if (exclude.indexOf(instance.pieces[index]) !== -1) { 
 				continue;
 			}
-
-			//console.log(typeof instance.pieces[index]);
+			
 			return instance.pieces[index];
 		}
+	};
+
+	instance.getNextBlocks = function (peer, limit) {
+		var exclude = []; // list of pieces not to ignore in piece pieceManager.getNextAvailablePiece();
+		var result = [];
+
+		while (limit > 0) {
+			var piece = instance.getNextAvailablePiece(peer, exclude);
+			if (!piece) {
+				break;
+			}
+
+			var blocks = piece.blocks.getMissing();
+			// no missing blocks, probably because all blocks are currently "full" @see block.isFull();
+			if (blocks.length <= 0) {
+				exclude.push(piece);
+				continue;
+			}
+
+			for (var index = 0; index < blocks.length && limit > 0; index++) {
+				var block = blocks[index];
+				result.push(block);
+				limit--;
+			}
+		}
+
+		return result;
+	};
+
+	function onPieceComplete (piece) {
+		console.log("MANAGER->PIECE_COMPLETED");
+		instance.emit('piece:completed', piece);
 	}
 
 	Step( // initialize
@@ -54,13 +85,13 @@ exports.create = function PieceManager (torrent, callback) {
 			for (var index = 0; index < piecesCount; index++) {
 				var offset = index * PIECE_HASH_BYTE_LENGTH;
 				var hash = torrent.infomation.info.pieces.substr(offset, PIECE_HASH_BYTE_LENGTH);
-				var piece = Piece.create(index, hash, pieceLength);
+				var piece = Piece.create(index, hash, pieceLength, this.parallel());
+				piece.on('piece:completed', onPieceComplete);
 				pieces[index] = piece;
 			}
 
 			console.log('piece length: %d. total pieces: %d', pieceLength, piecesCount);
 			instance.pieces = pieces;
-			this (null);
 		},
 		function inflate (error) {
 			if (error) throw error;

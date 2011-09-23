@@ -21,9 +21,13 @@ exports.create = function Torrent (filepath, callback) {
 	instance.peerManager = null;
 	instance.trackerManager = null;
 
-	instance.download = function () {
+	instance.download = function (file) {
 		console.log('downloading: %s : %s', filepath, instance.infomation.info.name);
 		instance.trackerManager.start();
+
+		if (file) {
+			instance.pieceManager.currentFile = file;
+		}
 
 		// make sure all active peers always working on something.
 		setInterval(function() {
@@ -32,7 +36,7 @@ exports.create = function Torrent (filepath, callback) {
 			}
 
 			instance.peerManager.getActive().forEach(function(peer) {
-				peer.download(instance);
+				peer.download();
 			});
 		}, 500);
 	};
@@ -40,7 +44,6 @@ exports.create = function Torrent (filepath, callback) {
 	// create a datastream, to start streaming the content of the torrent.
 	instance.createStream = function (destinationStream) {
 		var task = new TaskQueue();
-		
 		// queue up piece tasks.
 		instance.pieceManager.pieces.forEach(function(piece) {
 			task.queue(function (callback) {
@@ -49,7 +52,6 @@ exports.create = function Torrent (filepath, callback) {
 				pieceStream.run();
 			});
 		});
-
 		return task;
 	};
 

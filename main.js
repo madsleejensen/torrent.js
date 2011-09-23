@@ -10,10 +10,10 @@ Torrent.create('test/thor.torrent', function (error, torrent) {
 		return;	
 	}
 
-	console.log(torrent.fileManager.files);
-
+	//var file = torrent.fileManager.files[4];
+	//file.download(); 
+	/*file.createStream(process.stdout); */
 	torrent.download();
-
 	//var datastream = torrent.createStream(process.stdout);
 	//datastream.run();
 });
