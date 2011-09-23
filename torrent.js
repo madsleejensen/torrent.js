@@ -9,6 +9,7 @@ var FileManager = require('./managers/file_manager');
 var Storage = require('./storage');
 var TaskQueue = require('./taskqueue');
 var U = require('U');
+var Downloader = require('./downloader');
 
 /**
  * Represents a *.torrent to be downloaded.
@@ -20,14 +21,12 @@ exports.create = function Torrent (filepath, callback) {
 	instance.pieceManager = null;
 	instance.peerManager = null;
 	instance.trackerManager = null;
+	instance.downloader = null;
 
 	instance.download = function (file) {
-		console.log('downloading: %s : %s', filepath, instance.infomation.info.name);
+		console.log('downloading: %s : %s', filepath, instance.infomation.info.name, file.path);
 		instance.trackerManager.start();
-
-		if (file) {
-			instance.pieceManager.currentFile = file;
-		}
+		instance.downloader.download(file);
 
 		// make sure all active peers always working on something.
 		setInterval(function() {
@@ -67,9 +66,22 @@ exports.create = function Torrent (filepath, callback) {
 			instance.infomation = infomation;
 			this();
 		},
+		function buildFilemanager (error) {
+			if (error) throw error;
+			instance.fileManager = FileManager.create(instance);
+			this();
+		},
 		function initStorage (error) {
 			if (error) throw error;
 			instance.storage = new Storage(instance, this);
+		},
+		function initDownloader (error) {
+			if (error) throw error;
+			var callback = this;
+			Downloader.create(instance, function (error, downloader) {
+				instance.downloader = downloader;
+				callback(error);
+			});
 		},
 		function initPieceManager (error) {
 			if (error) throw error;
@@ -82,8 +94,7 @@ exports.create = function Torrent (filepath, callback) {
 		function initFileManager (error) {
 			if (error) throw error;
 			var callback = this;
-			FileManager.create(instance, function (error, manager) {
-				instance.fileManager = manager;
+			instance.fileManager.initialize(function (error, manager) {
 				callback (error);
 			});
 		},

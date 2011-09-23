@@ -1,10 +1,29 @@
 var U = require('U');
 var File = require('./../file');
 
-exports.create = function (torrent, callback) {
-	
+exports.create = function (torrent) {
 	var instance = {};
-	
+	instance.fileSize = null;
+
+	instance.getTotalFileSize = function () {
+		if (instance.fileSize === null) {
+			var fileDescriptions = torrent.infomation.info.files;
+			var fileSize = 0;
+			fileDescriptions.forEach(function (description) {
+				fileSize += description.length;
+			});	
+			
+			instance.fileSize = fileSize;	
+		}
+
+		return instance.fileSize;
+	};
+
+	instance.initialize = function (callback) {
+		instance.files = createFiles();
+		callback(null, instance);
+	};
+
 	function createFiles () {
 		var pieceLength = torrent.infomation.info['piece length'];
 		var files = [];
@@ -30,10 +49,10 @@ exports.create = function (torrent, callback) {
 
 				for (var index = startIndex; index <= endIndex; index++) {
 					var requirement = {
-						piece: torrent.pieceManager.pieces[index]
+						piece: torrent.pieceManager.pieces[index],
+						offset: null
 					};
 
-					// NÆSTE SKRIDT FÅ DEN TIL KUN AT HENTE BLOCKS DER ER REQUIRED.
 					var offset = {
 						start: null, 
 						end: null
@@ -46,7 +65,10 @@ exports.create = function (torrent, callback) {
 						offset.end = endOffset;
 					}
 
-					requirement.offset = offset;
+					if (offset.start || offset.end) {
+						requirement.offset = offset;
+					}
+
 					requirements.push(requirement);
 				}
 
@@ -59,7 +81,5 @@ exports.create = function (torrent, callback) {
 		return files;
 	}
 
-	instance.files = createFiles();
-
-	callback(null, instance);
+	return instance;
 };

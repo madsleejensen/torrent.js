@@ -43,7 +43,6 @@ exports.create = function UDPTracker (url) {
 
 	instance.forceUpdate = function () {
 		if (mWorking) return;
-		
 		mWorking = true;
 		mWorkingTimeout = setTimeout(function() {
 			mWorking = false;

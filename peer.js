@@ -92,7 +92,7 @@ module.exports = function peer (connectionInfo) {
 		}
 
 		var slotsAvailable = MAXIMUM_PIECE_CHUNK_REQUESTS - mRequestingBlocks.length;
-		var blocks = instance.torrent.pieceManager.getNextBlocks(instance, slotsAvailable);
+		var blocks = instance.torrent.downloader.getNextBlocks(instance, slotsAvailable);
 
 		blocks.forEach(function (block) {
 			block.peers.push(instance);
@@ -158,7 +158,9 @@ module.exports = function peer (connectionInfo) {
 			
 		},
 		piece: function (index, begin, data) {
-			//console.log("block (index: %d) (begin: %d) (completed: %d)", index, begin);
+			//console.log("block (index: %d) (begin: %d)", index, begin);
+			//console.log(data.toString('utf8'));
+			
 			var track = U.array.findOne(mRequestingBlocks, {'block.piece.index': index, 'block.begin': begin});
 
 			if (track) {
@@ -217,15 +219,15 @@ module.exports = function peer (connectionInfo) {
 				instance.sender.send(message);
 			}
 		},
-		request: function (index, begin, length) { // begin / length should be something in the power of 2. maximum Math.pow(2, 15)
+		request: function (index, begin, length) { // begin / length should be something in the power of 2. maximum Math.pow(2, 14)
 			var message = new Buffer(17);
 			message.writeInt32BE(/* length */ 13, 0);
 			message.writeInt8(6, 4); // id
 			message.writeInt32BE(index, 5); // index
-			message.writeInt32BE(begin, 9); // begin
+			message.writeUInt32BE(begin, 9); // begin
 			message.writeInt32BE(length, 13); // length
 
-			//console.log("%s:%d: [request] %d", connectionInfo.ip_string, connectionInfo.port, index, message.toString('hex'));
+			//console.log("%s:%d: [request] %d", connectionInfo.ip_string, connectionInfo.port, index, begin);
 			instance.sender.send(message);
 		},
 		send: function (buffer) {

@@ -4,7 +4,7 @@ var TaskQueue = require('./taskqueue');
 var BlockManager = require('./managers/block_manager');
 var Step = require('step');
 
-exports.create = function Piece (index, hash, length, callback) {
+exports.create = function Piece (torrent, index, hash, length, callback) {
 	
 	var instance = new Events.EventEmitter();
 	instance.loaded = false;
@@ -106,7 +106,7 @@ exports.create = function Piece (index, hash, length, callback) {
 	Step (
 		function createBlocks () {
 			var callback = this;
-			BlockManager.create(instance, function (error, manager) {
+			BlockManager.create(torrent, instance, function (error, manager) {
 				instance.blocks = manager;
 				manager.on('block:completed', onBlockCompleted);
 				callback (error);

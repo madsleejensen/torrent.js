@@ -3,22 +3,30 @@ var Step = require('step');
 var Block = require('./../block');
 var Events = require ('events');
 
-exports.create = function (piece, callback) {
+exports.create = function (torrent, piece, callback) {
 	
 	var instance = new Events.EventEmitter();
 	instance.chunkSize = Math.pow(2, 14);
 	instance.blocks = [];
 
 	instance.getByRange = function (offset) {
-		var blockStart = Math.floor(offset.start / instance.chunkSize);
-		var blockEnd = Math.floor(offset.end / instance.chunkSize);
+		var blockStart = 0;
+		var blockEnd = (instance.blocks.length - 1);
+
+		if (offset) {
+			if (offset.start) {
+				blockStart = Math.floor(offset.start / instance.chunkSize);
+			}
+			if (offset.end) {
+				blockEnd = Math.floor(offset.end / instance.chunkSize);
+			}
+		}
 
 		var result = [];
 
 		for (var chunk = blockStart; chunk <= blockEnd; chunk++) {
 			result.push(instance.blocks[chunk]);
 		}
-
 		return result;
 	};
 
@@ -64,10 +72,6 @@ exports.create = function (piece, callback) {
 			var begin = chunk * instance.chunkSize;
 			var length = instance.chunkSize;
 
-			if ((begin + length) > piece.length) {
-				length = piece.length - begin;
-			}
-			
 			var block = new Block ({
 				piece: piece,
 				chunk: chunk,
@@ -78,6 +82,18 @@ exports.create = function (piece, callback) {
 
 			instance.blocks[chunk] = block;
 			block.once('block:completed', onBlockCompleted);
+
+			// remove overflow that is caused because the (piece count * piece-length) is not equal to the actual size of the torrent file.
+			// this will trim away overflowing blocks, and resize the 'block.length' attribute of the last block, in the last piece to match excatly the total filesize.
+			var end = (begin + length);
+			var totalFileOffset = end + (piece.index * piece.length); 
+
+			if (totalFileOffset > torrent.fileManager.getTotalFileSize()) {
+				var delta = totalFileOffset - torrent.fileManager.getTotalFileSize(); 
+				block.length -= delta;
+				//console.log(delta, chunk, totalOffset, torrent.fileManager.getFileSize(),'DELTA');
+				break;
+			}
 		}
 
 		callback (null);

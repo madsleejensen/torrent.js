@@ -22,10 +22,13 @@ exports.create = function TrackerManager (torrent, callback) {
 			});
 			tracker.start(torrent.infomation);
 		});
+
+		setInterval(instance.forceStart, 5000);
 	};
 
 	// Force tracker update, that does not take 'min-inteval' into account.
 	instance.forceStart = function () {
+		console.log('force-start');
 		instance.trackers.forEach(function(tracker) {
 			tracker.forceUpdate();
 		});

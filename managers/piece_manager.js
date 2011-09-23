@@ -85,7 +85,7 @@ exports.create = function PieceManager (torrent, callback) {
 			for (var index = 0; index < piecesCount; index++) {
 				var offset = index * PIECE_HASH_BYTE_LENGTH;
 				var hash = torrent.infomation.info.pieces.substr(offset, PIECE_HASH_BYTE_LENGTH);
-				var piece = Piece.create(index, hash, pieceLength, this.parallel());
+				var piece = Piece.create(torrent, index, hash, pieceLength, this.parallel());
 				piece.on('piece:completed', onPieceComplete);
 				pieces[index] = piece;
 			}
