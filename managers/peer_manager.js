@@ -5,9 +5,10 @@ var U = require('U');
  * Is responsible for categorising them by states and listen for state changes.
  */
 
-var MAXIMUM_ACTIVE_PEERS = 800; // -1 == unlimited
-var MAXIMUM_CONNECTING_PEERS = 100;
-var MAXIMUM_CONNECTION_ATTEMPTS = 1;
+var MAXIMUM_ACTIVE_PEERS = -1; // -1 == unlimited
+var MAXIMUM_CONNECTING_PEERS = 150;
+var MAXIMUM_CONNECTION_ATTEMPTS = 2;
+var SECONDS_BETWEEN_CONNECTION_ATTEMPTS = 5;
 
 exports.create = function (torrent, callback) {
 	
@@ -16,7 +17,8 @@ exports.create = function (torrent, callback) {
 	var mNewPeers = []; // peers that has not yet been checked.
 	var mActivePeers = []; // peers that has active connection.
 	var mConnectingPeers = [];
-
+	var mReQueuePeers = []; // peers that are to be tested again for connection.
+ 
 	instance.getActive = function () {
 		return mActivePeers;
 	};
@@ -41,12 +43,15 @@ exports.create = function (torrent, callback) {
 			mNewPeers.push(peer);
 		});
 
-		console.log('peers: [unique: %d] [connecting: %d] [active: %d]', mPeers.length, mConnectingPeers.length, mActivePeers.length);
+		//console.log('peers: [unique: %d] [new: %d] [connecting: %d] [active: %d]', mPeers.length, mNewPeers.length, mConnectingPeers.length, mActivePeers.length);
 		onNewPeersAvailable();
 	}
 
 	// attempt to create a connection to a peer to filter out dead peers.
 	function onNewPeersAvailable () {
+		if (torrent.isActive === false) { // torrent is not requesting any data.
+			return;	
+		}
 		if (mConnectingPeers.length >= MAXIMUM_CONNECTING_PEERS) { // too many peers already being checked.
 			return;
 		}
@@ -60,10 +65,10 @@ exports.create = function (torrent, callback) {
 		}
 
 		var slotsAvailable = MAXIMUM_CONNECTING_PEERS - mConnectingPeers.length;
-		var slots = Math.min(mNewPeers.length, slotsAvailable);
-		var peers = mNewPeers.splice(0, slots);
-		
-		peers.forEach(function (peer) {
+		slotsAvailable = Math.min(mNewPeers.length, slotsAvailable);
+		var slots = mNewPeers.splice(0, slotsAvailable);
+
+		slots.forEach(function(peer) {
 			mConnectingPeers.push(peer);
 			peer.on('peer:state_changed', onPeerStateChanged);
 			peer.handshake(torrent);
@@ -81,20 +86,41 @@ exports.create = function (torrent, callback) {
 				// if peer has been active before, give it a chance again.
 				if (peer.hasBeenActive) { 
 					peer.reset();
-					mNewPeers.push(peer);
+					mReQueuePeers.push(peer);
 				}
 				// if peer has not reached connection attempt limit, queue it again.
 				else if (peer.failedAttempts < MAXIMUM_CONNECTION_ATTEMPTS) {
-					mNewPeers.push(peer); //@todo move this to the peer instead. and create a future timeout.
-				}
-				else {
-					// console.log("peer is dead");
+					mReQueuePeers.push(peer);
 				}
 			}
 
 			onNewPeersAvailable();
 		}
 	}
+
+	// requeue peers if enough time has expired.
+	function reQueuePeers () {
+		if (mReQueuePeers.length <= 0) {
+			return;
+		}
+
+		var candidateTime = process.uptime() - SECONDS_BETWEEN_CONNECTION_ATTEMPTS;
+
+		mReQueuePeers.forEach(function (peer) {
+			if (peer.lastAttemptTime > candidateTime) {
+				return; // wait abit longer to test this conneciton again.
+			}
+
+			mNewPeers.push(peer);
+			U.array.remove(mReQueuePeers, peer);
+		});
+	}
+
+	setInterval(reQueuePeers, SECONDS_BETWEEN_CONNECTION_ATTEMPTS * 1000);
+
+	setInterval(function() { // just a bit of infomation.
+		console.log('peers: [unique: %d] [new: %d] [connecting: %d] [active: %d]', mPeers.length, mNewPeers.length, mConnectingPeers.length, mActivePeers.length);
+	}, 10000);
 
 	callback (null, instance);
 };

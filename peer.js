@@ -7,7 +7,7 @@ var U = require('U');
 
 var CONNECTION_TIMEOUT = 5000;
 var MAXIMUM_PIECE_CHUNK_REQUESTS = 8; // number of chunk requests pr. peer. (http://wiki.theory.org/Talk:BitTorrentSpecification#Algorithms:_Queuing)
-var PEER_REQUEST_TIMEOUT = 3000;
+var PEER_REQUEST_TIMEOUT = 3500;
 
 module.exports = function peer (connectionInfo) {
 	var instance = new Events.EventEmitter();
@@ -15,6 +15,7 @@ module.exports = function peer (connectionInfo) {
 	instance.choked = false;
 	instance.hasBeenActive = false;
 	instance.failedAttempts = 0;
+	instance.lastAttemptDate = null;
 	instance.torrent = null;
 	instance.getAvailablePieces = function () {
 		return mPiecesAvailable;	
@@ -72,6 +73,7 @@ module.exports = function peer (connectionInfo) {
 
 			if (!instance.hasBeenActive) {
 				instance.failedAttempts++;
+				instance.lastAttemptTime = process.uptime();
 			}
 
 			instance.connectionInfo.state = 'closed';
@@ -112,6 +114,7 @@ module.exports = function peer (connectionInfo) {
 		instance.failedAttempts = 0;
 		instance.hasBeenActive = false;
 		instance.choked = false;
+		instance.lastAttemptTime = null;
 		instance.removeAllListeners();
 	};
 

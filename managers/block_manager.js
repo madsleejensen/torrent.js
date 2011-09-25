@@ -2,13 +2,20 @@ var U = require('U');
 var Step = require('step');
 var Block = require('./../block');
 var Events = require ('events');
-
+/**
+ * Create's an maintain a list of blocks for a given Piece.
+ * @see piece.js
+ */
 exports.create = function (torrent, piece, callback) {
-	
 	var instance = new Events.EventEmitter();
-	instance.chunkSize = Math.pow(2, 14);
+	instance.chunkSize = Math.pow(2, 14); // this is the maximum size supported by most torrent clients.
 	instance.blocks = [];
 
+	/**
+	 * Returns the blocks that fall under a given offset specification. This is used by the
+	 * DownloadItem to only download the blocks required for a given file.
+	 * @see download_item.js
+	 */
 	instance.getByRange = function (offset) {
 		var blockStart = 0;
 		var blockEnd = (instance.blocks.length - 1);

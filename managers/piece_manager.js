@@ -15,6 +15,8 @@ exports.create = function PieceManager (torrent, callback) {
 	instance.storage = torrent.storage;
 	instance.currentFile = null;
 
+	/* NOT USED ANY LONGER BECAUSE MOST OF THE LOGIC FOR DETERMINING WITCH PIECES / BLOCKS TO DOWNLOAD HAS BEEN MOVED TO THE DOWNLOADER.
+	
 	// find the next piece to download that is available for the peer.
 	instance.getNextAvailablePiece = function (peer, exclude) {
 		var available = peer.getAvailablePieces();
@@ -27,11 +29,6 @@ exports.create = function PieceManager (torrent, callback) {
 			var piece = instance.pieces[index];
 
 			if (instance.pieces[index].completed) {
-				continue;
-			}
-
-			//@todo this is alot of iteration. could do with some tweaking.
-			if (instance.currentFile && !U.array.contains(instance.currentFile.requirements, {'piece.index': piece.index})) {
 				continue;
 			}
 
@@ -70,9 +67,9 @@ exports.create = function PieceManager (torrent, callback) {
 
 		return result;
 	};
+	*/
 
 	function onPieceComplete (piece) {
-		console.log("MANAGER->PIECE_COMPLETED");
 		instance.emit('piece:completed', piece);
 	}
 

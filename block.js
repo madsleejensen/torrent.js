@@ -1,6 +1,6 @@
 var Events = require('events');
 
-var MAXIMUM_ASSIGNED_PEERS = 10;
+var MAXIMUM_ASSIGNED_PEERS = 5;
 
 module.exports = function Block (params) {
 
