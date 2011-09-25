@@ -65,7 +65,7 @@ exports.create = function UDPTracker (url) {
 			var message = new Buffer(100);
 			connectionId.copy(message); // 64 bit.
 			message.writeInt32BE(ACTIONS.ANNOUNCE, 8); // 32 bit
-			message.writeInt32BE(createTransactionId() + 1, 12); // 32 bit
+			message.writeInt32BE(createTransactionId(), 12); // 32 bit
 			instance.torrent.info_hash_buffer.copy(message, 16); // hash (20 bytes)
 			instance.torrent.peer_id_buffer.copy(message, 36); // peer (20 bytes)
 			message.writeInt32BE(0, 56) // downloaded (64 bit)
@@ -83,7 +83,8 @@ exports.create = function UDPTracker (url) {
 	};
 
 	function createTransactionId () {
-		return 1684299398;	
+		var maxIntegerValue = 2147483647; // (Math.pow(2, 32) / 2) - 1; divided because the value is not unsigned.
+		return Math.round(Math.random() * maxIntegerValue);	
 	}
 
 	instance.socket.on('error', function () {

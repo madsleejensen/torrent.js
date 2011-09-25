@@ -21,4 +21,5 @@ Torrent.create('test/thor.torrent', function (error, torrent) {
 /**
  @todo
  	-make it possible for the systemt to increase the maximum number of allowed peers pr. block.
+ 	
  */

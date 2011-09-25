@@ -30,6 +30,11 @@ exports.create = function Torrent (filepath, callback) {
 		instance.trackerManager.start();
 		instance.downloader.download(file);
 
+		file.on('file:completed', function () {
+			instance.isActive = false;
+			clearInterval(interval);
+		});
+
 		// make sure all active peers always working on something.
 		var interval = setInterval(function() {
 			if (instance.peerManager.getActive().length < 1) {
