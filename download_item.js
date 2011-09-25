@@ -1,6 +1,9 @@
 var Events = require('events');
 var TaskQueue = require('./taskqueue');
-
+/**
+ * Each @file is made up of a set of @download_items to be completed, in order for the file to be fully downloaded.
+ * @download_items keeps track on missing blocks of the @piece they represent, and they are responsible for clipping the block's data appropriately.
+ */
 module.exports = function (requirement) {
 	var instance = new Events.EventEmitter();
 	instance.blocks = null;
@@ -8,12 +11,12 @@ module.exports = function (requirement) {
 	instance.piece = requirement.piece;
 	instance.completed = false;
 
-	instance.createStream = function (destination) {
+	instance.createStreamQueue = function (destination) {
 		var task = new TaskQueue();
 
 		if (!instance.blocks) {
 			task.queue (function (callback) {
-				var pieceQueue = instance.piece.createStream(destination);
+				var pieceQueue = instance.piece.createStreamQueue(destination);
 				pieceQueue.on('end', function () {
 					callback();
 				});

@@ -1,53 +1,64 @@
 var Events = require ('events');
-
+var Step = require('step');
+var TaskQueue = require('./taskqueue');
+var DownloadItem = require('./download_item');
+var U = require('U');
+/**
+ * Represent a file to be downloaded, as described in the *.torrent file.
+ */
 module.exports = function (torrent, path, length, requirements) {
 	var instance = new Events.EventEmitter();
 	instance.path = path;
 	instance.length = length;
 	instance.requirements = requirements;
 	instance.completed = false;
+	instance.downloadItems = [];
 
-	/*
 	instance.download = function () {
 		torrent.download(instance);
-		setInterval(onPieceCompleted, 2000);
 	};
 
-	function onPieceCompleted (piece) {
-		if (instance.completed) {
-			return;
-		}
+	/**
+     * takes a destination stream, and pipe data to it as the file gets loaded. Much like the core Stream.pipe() method would.
+     * this method will only work well if the @downloader is using a sequential block priority algorithm.
+     */
+	instance.pipe = function (destination) {
+		var queue = instance.createStreamQueue(destination);
+		queue.run();
+	};
 
-		for (var i = (instance.requirements.length - 1); i >= 0; i--) {
-			var requirement = instance.requirements[i];
-			
-			if (!requirement.piece.completed) {
-				// because some pieces does not need to be fully downloaded to complete a file we check the required blocks from the incompleted piece
-				if (requirement.offset !== null) {
-					var blocks = requirement.piece.blocks.getByRange(requirement.offset);
-					for (var x = 0; x < blocks.length; x++) {
-						var block = blocks[x];
-						if (!block.completed) {
-							console.log('file missing [index: %d] [block: %d]', requirement.piece.index, block.chunk);
-							return; // not completed
-						}
-					}
-				}
-				else {
-					console.log('file missing [index: %d]', requirement.piece.index);
-					return; // not completed
-				}
+	instance.createStreamQueue = function (destination) {
+		var task = new TaskQueue();
+
+		instance.downloadItems.forEach(function(item) {
+			task.queue (function (callback) {
+				var itemTask = item.createStreamQueue(destination);	
+				itemTask.on('end', function () {
+					callback ();
+				});
+				itemTask.run();
+			});
+		});
+		
+		return task;
+	};
+
+	function onDownloadItemCompleted () {
+		if (!U.array.contains(instance.downloadItems, {completed: false})) {
+			instance.emit('file:completed', instance);
+		}
+	}
+
+	Step(
+		function createDownloadItems () {	
+			for (var i = 0; i < instance.requirements.length; i++) {
+				var requirement = instance.requirements[i];
+				var item = new DownloadItem (requirement);
+				item.once('download_item:completed', onDownloadItemCompleted);
+				instance.downloadItems.push(item);
 			}	
 		}
-
-		console.log("FILE COMPLETEDDDDDDD");
-		// all pieces completed file completed.
-		instance.completed = true;
-		torrent.pieceManager.removeListener('piece:completed', onPieceCompleted);
-		instance.emit('file:completed', instance);
-	};
-	*/
-	//torrent.pieceManager.on('piece:completed', onPieceCompleted);
+	);
 
 	return instance;
 };

@@ -1,41 +1,21 @@
 var Events = require('events');
-var TaskQueue = require('./taskqueue');
-var DownloadItem = require('./download_item');
 /**
  * Responsible for taking a @file instance and allowing peers to request blocks within that file's range to be downloaded.
  * This class could be modified to return blocks in the "rarest" first order instead of sequential.
  */
 exports.create = function Downloader (torrent, callback) {
 	var instance = new Events.EventEmitter();
-	instance.items = [];
+	instance.currentFile = null;
 
 	instance.download = function (file) {
-		instance.items = [];
-
-		for (var i = 0; i < file.requirements.length; i++) {
-			var requirement = file.requirements[i];
-			var item = new DownloadItem (requirement);
-			instance.items.push(item);
-		}
-	};
-
-	instance.createStream = function (destination) {
-		var task = new TaskQueue();
-
-		instance.items.forEach(function(item) {
-			task.queue (function (callback) {
-				var itemTask = item.createStream(destination);	
-				itemTask.on('end', function () {
-					callback ();
-				});
-				itemTask.run();
-			});
-		});
-		
-		return task;
+		instance.currentFile = file;
 	};
 
 	instance.getNextBlocks = function (peer, limit) {
+		if (instance.currentFile === null) {
+			throw new Error('Downloader: no file selected for download.');
+		}
+
 		var exclude = []; // list of items to ignore in next call to getNextAvailableItem();
 		var result = [];
 
@@ -69,8 +49,8 @@ exports.create = function Downloader (torrent, callback) {
 			return;
 		}
 
-		for (var i = 0; i < instance.items.length; i++) {
-			var item = instance.items[i];
+		for (var i = 0; i < instance.currentFile.downloadItems.length; i++) {
+			var item = instance.currentFile.downloadItems[i];
 			
 			if (item.completed) {
 				continue;

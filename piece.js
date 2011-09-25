@@ -14,7 +14,7 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 	instance.completed = false;
 	instance.hash = hash;
 
-	instance.createStream = function (destination) {
+	instance.createStreamQueue = function (destination) {
 		var task = new TaskQueue();
 
 		if (instance.completed) {

@@ -26,6 +26,10 @@ exports.create = function (torrent, callback) {
 	instance.getConnecting = function () {
 		return mConnectingPeers;
 	};
+
+	instance.countIdle = function () {
+			
+	};
 	
 	instance.add = function (peers) {
 		if (peers == null || peers.length < 1) {

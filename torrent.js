@@ -30,15 +30,6 @@ exports.create = function Torrent (filepath, callback) {
 		instance.trackerManager.start();
 		instance.downloader.download(file);
 
-		var stream = FileSystem.createWriteStream('downloads/' + file.path, {flags: 'w+', mode: 0777});
-		var taskqueue = instance.downloader.createStream(stream);
-		taskqueue.on('end', function () {
-			instance.isActive = false;
-			clearInterval(interval);
-			console.log('file completed: [name: %s]', file.path);
-		});
-		taskqueue.run();
-
 		// make sure all active peers always working on something.
 		var interval = setInterval(function() {
 			if (instance.peerManager.getActive().length < 1) {

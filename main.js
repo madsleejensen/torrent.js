@@ -1,5 +1,5 @@
 var Torrent = require('./torrent');
-var Downloader = require('./downloader');
+var FileSystem = require('fs');
 
 // prevent root access.
 process.setgid(20);
@@ -12,13 +12,13 @@ Torrent.create('test/thor.torrent', function (error, torrent) {
 		return;	
 	}
 
-	var file = torrent.fileManager.files[1];
-	torrent.download(file);
-
-	//var file = torrent.fileManager.files[4];
-	//file.download(); 
-	/*file.createStream(process.stdout); */
-	//torrent.download();
-	//var datastream = torrent.createStream(process.stdout);
-	//datastream.run();
+	var file = torrent.fileManager.files[2];
+	var stream = FileSystem.createWriteStream('downloads/' + file.path, {flags: 'w+', mode: 0777});
+	file.pipe(stream);
+	file.download();
 });
+
+/**
+ @todo
+ 	-make it possible for the systemt to increase the maximum number of allowed peers pr. block.
+ */
