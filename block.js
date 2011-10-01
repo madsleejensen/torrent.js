@@ -1,6 +1,5 @@
 var Events = require('events');
-
-var MAXIMUM_ASSIGNED_PEERS = 5;
+var Config = require('./config');
 
 module.exports = function Block (params) {
 
@@ -13,6 +12,7 @@ module.exports = function Block (params) {
 	instance.storage = 'memory';
 	instance.completed = false;
 	instance.peers = [];
+	instance.allowedPeerCount = Config.Blocks.MAXIMUM_ASSIGNED_PEERS;
 
 	instance.getValue = function (callback) {
 		if (!instance.completed) { // block has not yet been downloaded, listen for completed event.
@@ -59,7 +59,7 @@ module.exports = function Block (params) {
 
 	// to prevent too many peers trying to download the same block.
 	instance.isFull = function () {
-		if (instance.peers.length >= MAXIMUM_ASSIGNED_PEERS) {
+		if (instance.peers.length >= instance.allowedPeerCount) {
 			return true;
 		}
 

@@ -3,8 +3,7 @@ var Bencoder = require('bencoder');
 var Compact = require('./../compact');
 var Peer = require('./../peer');
 var Events = require("events");
-
-var MAXIMUM_FAILED_ATTEMPTS = 3;
+var Config = require('./../config');
 
 var ACTIONS = {
 	CONNECT: 0,
@@ -20,8 +19,6 @@ var EVENTS = {
 	STOPPED: 3
 };
 
-var LISTENING_PORT = 8111;
-
 // http://www.rasterbar.com/products/libtorrent/udp_tracker_protocol.html#actions
 // http://www.bittorrent.org/beps/bep_0015.html
 exports.create = function UDPTracker (url) {
@@ -35,24 +32,39 @@ exports.create = function UDPTracker (url) {
 	var mMinimumInterval = 60 * 1000;
 	var mWorking = false; // to prevent multiple requests going on at the same time.
 	var mWorkingTimeout = null;
+	var mIsActive = false;
 
 	instance.start = function (torrent) {
+		mIsActive = true;
 		instance.torrent = torrent;
 		instance.sender.connect();
 	};
 
+	instance.stop = function () {
+		mIsActive = false;	
+	};
+
 	instance.forceUpdate = function () {
 		if (mWorking) return;
+
+		if (!mIsActive) {
+			return;
+		}
+
 		mWorking = true;
 		mWorkingTimeout = setTimeout(function() {
 			mWorking = false;
-		}, 1000);
+		}, Config.Tracker.UDP_REQUEST_TIMEOUT);
 
 		instance.sender.connect();
 	};
 
 	instance.sender = {
 		connect: function () {
+			if (!mIsActive) {
+				return;
+			}
+
 			// predefined value by protocol.
 			var connectionId = new Buffer('0000041727101980', 'hex');
 			var message = new Buffer(16);
@@ -75,7 +87,7 @@ exports.create = function UDPTracker (url) {
 			message.writeUInt32BE(0, 84) // IP (32bit) 0 == sender ip
 			message.writeUInt32BE(0, 88) // key (32bit)
 			message.writeInt32BE(-1, 92) // num_want (32bit) (-1 == default)
-			message.writeUInt16BE(LISTENING_PORT, 96) // port
+			message.writeUInt16BE(Config.Tracker.LISTENING_PORT, 96) // port
 			message.writeUInt16BE(0, 98) // extensions
 
 			instance.socket.send(message, 0, message.length, instance.url.port, instance.url.hostname);
@@ -140,7 +152,7 @@ exports.create = function UDPTracker (url) {
 		}
 	});
 
-	instance.socket.bind(LISTENING_PORT);
+	instance.socket.bind(Config.Tracker.LISTENING_PORT);
 
 	return instance;
 };

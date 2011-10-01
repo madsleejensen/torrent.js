@@ -1,15 +1,63 @@
 var Events = require('events');
+var Config = require('./config');
+
 /**
  * Responsible for taking a @file instance and allowing peers to request blocks within that file's range to be downloaded.
  * This class could be modified to return blocks in the "rarest" first order instead of sequential.
  */
+
 exports.create = function Downloader (torrent, callback) {
 	var instance = new Events.EventEmitter();
 	instance.currentFile = null;
+	instance.isDownloading = false;
+	var mInterval = null;
 
 	instance.download = function (file) {
+		torrent.trackerManager.start();
+
 		instance.currentFile = file;
+		instance.currentFile.on('file:completed', onFileCompleted);
+
+		if (mInterval != null) {
+			clearInterval(mInterval);
+			mInterval = null;
+		}
+
+		// make sure all active peers always working on something.
+		mInterval = setInterval(function() {
+			if (torrent.peerManager.getActive().length < 1) {
+				return;		
+			}
+
+			torrent.peerManager.getActive().forEach(function(peer) {
+				instance.addPeerBlockRequests (peer);
+			});
+		}, 500);
+
+		instance.isDownloading = true;
 	};
+
+	function onFileCompleted () {
+		console.log('downloader: [file: %s] completed', instance.currentFile.path);
+		instance.isDownloading = false;
+		torrent.trackerManager.stop();
+		clearInterval(mInterval);
+		mInterval = null;
+	}
+
+	// queue up block requests on a peer.
+	instance.addPeerBlockRequests = function (peer) {
+		var slots = peer.getRequestSlotsAvailable();
+		if (slots <= 0) {
+			return;
+		}
+
+		var blocks = instance.getNextBlocks(peer, slots);
+		blocks.forEach(function (block) {
+			block.peers.push(peer);
+			peer.download(block);
+		});
+	}
 
 	instance.getNextBlocks = function (peer, limit) {
 		if (instance.currentFile === null) {
@@ -65,6 +113,14 @@ exports.create = function Downloader (torrent, callback) {
 			return item;
 		}
 	};
+
+	function adjustBlocksPeerLimit () {
+
+	};
+
+	torrent.once('peer_manager:ready', function () {
+		torrent.peerManager.on('active_peers_count:changed', adjustBlocksPeerLimit);	
+	});
 
 	callback(null, instance);
 };

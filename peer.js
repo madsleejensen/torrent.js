@@ -2,12 +2,7 @@ var Network= require('net');
 var Events = require('events');
 var Message = require("./message");
 var U = require('U');
-
-// @todo implement fast track http://bittorrent.org/beps/bep_0006.html
-
-var CONNECTION_TIMEOUT = 5000;
-var MAXIMUM_PIECE_CHUNK_REQUESTS = 8; // number of chunk requests pr. peer. (http://wiki.theory.org/Talk:BitTorrentSpecification#Algorithms:_Queuing)
-var PEER_REQUEST_TIMEOUT = 3500;
+var Config = require('./config');
 
 module.exports = function peer (connectionInfo) {
 	var instance = new Events.EventEmitter();
@@ -21,6 +16,10 @@ module.exports = function peer (connectionInfo) {
 		return mPiecesAvailable;	
 	};
 
+	instance.getRequestSlotsAvailable = function () {
+		return 	mRequestingBlocks.length < Config.Peer.MAXIMUM_PIECE_CHUNK_REQUESTS;
+	};
+
 	var mKeepAliveInterval;
 	var mSocket;
 	var mPiecesAvailable = [];
@@ -31,7 +30,7 @@ module.exports = function peer (connectionInfo) {
 		mSocket = Network.createConnection(connectionInfo.port, connectionInfo.ip_string);
 		mSocket.setEncoding('binary');
 		mSocket.setNoDelay();
-		mSocket.setTimeout(CONNECTION_TIMEOUT);
+		mSocket.setTimeout(Config.Peer.CONNECTION_TIMEOUT);
 
 		mSocket.on('error', onClose);
 		mSocket.on('end', onClose);
@@ -68,7 +67,8 @@ module.exports = function peer (connectionInfo) {
 		function onClose(error) {
 			if (mKeepAliveInterval != null) {
 				//console.log("peer: %s:%d -closed", connectionInfo.ip_string, connectionInfo.port);
-				clearInterval(mKeepAliveInterval); // this cause spammy close events.
+				clearInterval(mKeepAliveInterval);
+				mKeepAliveInterval = null;
 			}
 
 			if (!instance.hasBeenActive) {
@@ -86,28 +86,27 @@ module.exports = function peer (connectionInfo) {
 		}
 	};
 	
-	instance.download = function () {
+	instance.download = function (block) {
 		if (instance.choked ||
 			instance.connectionInfo.state == 'closed' || 
-			mRequestingBlocks.length >= MAXIMUM_PIECE_CHUNK_REQUESTS) {
+			mRequestingBlocks.length >= Config.Peer.MAXIMUM_PIECE_CHUNK_REQUESTS) {
 			return;
 		}
 
-		var slotsAvailable = MAXIMUM_PIECE_CHUNK_REQUESTS - mRequestingBlocks.length;
-		var blocks = instance.torrent.downloader.getNextBlocks(instance, slotsAvailable);
+		var track = { // used for timeout handling.
+			block: block,
+			timeout: setTimeout (function () {
+				cleanupBlockTrack (track);
+			}, Config.Peer.REQUEST_TIMEOUT)
+		};
 
-		blocks.forEach(function (block) {
-			block.peers.push(instance);
-			var track = {
-				block: block,
-				timeout: setTimeout (function () {
-					cleanupBlockTrack (track);
-				}, PEER_REQUEST_TIMEOUT)
-			};
+		mRequestingBlocks.push(track);
+		
+		if (!block) {
+			console.log('empty block');
+		}
 
-			mRequestingBlocks.push(track);
-			instance.sender.request(block.piece.index, block.begin, block.length);
-		});
+		instance.sender.request(block.piece.index, block.begin, block.length);
 	};
 
 	instance.reset = function () {
@@ -167,7 +166,6 @@ module.exports = function peer (connectionInfo) {
 			var track = U.array.findOne(mRequestingBlocks, {'block.piece.index': index, 'block.begin': begin});
 
 			if (track) {
-			
 				track.block.setValue(data);
 				track.block.peers.forEach(function (peer) {
 					peer.sender.cancel (track.block.piece.index, track.block.begin, track.block.length);						
@@ -176,7 +174,7 @@ module.exports = function peer (connectionInfo) {
 				cleanupBlockTrack (track);
 			}
 
-			instance.download();
+			instance.torrent.downloader.addPeerBlockRequests(instance);
 		},
 		cancel: function () {
 		},

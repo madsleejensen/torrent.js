@@ -86,11 +86,7 @@ exports.create = function (torrent) {
 
 			var offset = {
 				start: null, 
-				end: null/*,
-				file: {
-					start: fileOffset,
-					end: fileEndOffset
-				}*/
+				end: null
 			};
 
 			if (index === startIndex) {

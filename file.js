@@ -4,7 +4,7 @@ var TaskQueue = require('./taskqueue');
 var DownloadItem = require('./download_item');
 var U = require('U');
 /**
- * Represent a file to be downloaded, as described in the *.torrent file.
+ * Represent a file to be downloaded, as described in the *.torrent file. File data specifications are created as @download_item instances.
  */
 module.exports = function (torrent, path, length, requirements) {
 	var instance = new Events.EventEmitter();
@@ -15,7 +15,8 @@ module.exports = function (torrent, path, length, requirements) {
 	instance.downloadItems = [];
 
 	instance.download = function () {
-		torrent.download(instance);
+		console.log('downloading: [file: %s] [size: %s]', instance.path, instance.length);
+		torrent.downloader.download(instance);
 	};
 
 	/**
@@ -24,6 +25,9 @@ module.exports = function (torrent, path, length, requirements) {
      */
 	instance.pipe = function (destination) {
 		var queue = instance.createStreamQueue(destination);
+		queue.on('end', function() {
+			destination.end();
+		});
 		queue.run();
 	};
 

@@ -1,0 +1,9 @@
+<h1>Available torrent files</h1>
+
+<ul>
+<% for (var index in files) { %>
+	<li>
+		<a href="/torrent/<%- files[index] %>"><%- files[index] %></a>
+	</li>
+<% } %>
+</ul>

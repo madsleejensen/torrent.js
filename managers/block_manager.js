@@ -39,7 +39,7 @@ exports.create = function (torrent, piece, callback) {
 		return result;
 	};
 
-	instance.getMissing = function (range) {
+	instance.getMissing = function () {
 		var result = [];
 
 		instance.blocks.forEach(function(block) {
@@ -49,12 +49,6 @@ exports.create = function (torrent, piece, callback) {
 			if (block.isFull()) {
 				return;
 			}
-			if (range) { // optional if range defined only return missing blocks within that range.
-				if (block.chunk < range.start || block.chunk > range.end) {
-					return;
-				}	
-			}
-
 			result.push(block);
 		});
 

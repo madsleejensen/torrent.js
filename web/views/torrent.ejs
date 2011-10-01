@@ -1,0 +1,10 @@
+<h1><%- torrent %></h1>
+<a href="/">Back</a>
+
+<ul>
+<% for (var index in files) { %>
+	<li>
+		<a href="/stream/<%- torrent %>/<%- files[index].path %>"><%- files[index].path %> (<%- Math.ceil(files[index].length / 1024) %> kb) </a>
+	</li>
+<% } %>
+</ul>

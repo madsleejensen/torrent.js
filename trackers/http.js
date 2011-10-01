@@ -5,8 +5,7 @@ var Compact = require('./../compact');
 var Peer = require('./../peer');
 var Events = require("events");
 var U = require('U');
-
-var MAXIMUM_FAILED_ATTEMPTS = 3;
+var Config = require('./../config')
 
 exports.create = function HttpTracker (url) {
 	
@@ -19,17 +18,27 @@ exports.create = function HttpTracker (url) {
 	var mIsRunning = false;
 	var mIsWorking = false; // prevents multiple requests.
 	var mTimeout;
+	var mIsActive = false;
 
 	instance.start = function (torrent) {
 		if (mIsRunning) return;
+		mIsActive = true;
 		mIsRunning = true;
 		
 		mTorrent = torrent;
 		request(onRequestCompleted);
 	};
 
+	instance.stop = function () {
+		mIsActive = false;
+	}
+
 	instance.forceUpdate = function () {
 		if (mIsWorking) {
+			return;
+		}
+		
+		if (!mIsActive) {
 			return;
 		}
 
@@ -46,7 +55,7 @@ exports.create = function HttpTracker (url) {
 	};
 
 	function request (callback) {
-		if (mIsWorking) {
+		if (mIsWorking || !mIsActive) {
 			callback();
 		}
 		mIsWorking = true;
@@ -122,7 +131,7 @@ exports.create = function HttpTracker (url) {
 			instance.failed_attempts++;
 		}
 
-		if (instance.failed_attempts >= MAXIMUM_FAILED_ATTEMPTS) {
+		if (instance.failed_attempts >= Config.Tracker.MAXIMUM_FAILED_ATTEMPTS) {
 			mIsRunning = false;
 			return; // stop.
 		}

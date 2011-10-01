@@ -10,42 +10,19 @@ var Storage = require('./storage');
 var TaskQueue = require('./taskqueue');
 var U = require('U');
 var Downloader = require('./downloader');
+var Events = require('events');
 
 /**
  * Represents a *.torrent to be downloaded.
  */
 exports.create = function Torrent (filepath, callback) {
-	var instance = {};
+	var instance = new Events.EventEmitter();
 	instance.infomation = null; // decoded infomation from the *.torrent file.
 	instance.storage = null;
 	instance.pieceManager = null;
 	instance.peerManager = null;
 	instance.trackerManager = null;
 	instance.downloader = null;
-	instance.isActive = false;
-
-	instance.download = function (file) {
-		console.log('downloading: [file: %s] [size: %s]', file.path, file.length);
-		instance.isActive = true;
-		instance.trackerManager.start();
-		instance.downloader.download(file);
-
-		file.on('file:completed', function () {
-			instance.isActive = false;
-			clearInterval(interval);
-		});
-
-		// make sure all active peers always working on something.
-		var interval = setInterval(function() {
-			if (instance.peerManager.getActive().length < 1) {
-				return;		
-			}
-
-			instance.peerManager.getActive().forEach(function(peer) {
-				peer.download();
-			});
-		}, 500);
-	};
 
 	// create a datastream, to start streaming the content of the torrent.
 	instance.createStream = function (destinationStream) {
@@ -71,6 +48,7 @@ exports.create = function Torrent (filepath, callback) {
 			infomation.peer_id = peerId;
 			infomation.peer_id_buffer = new Buffer(peerId);
 			instance.infomation = infomation;
+			instance.emit('torrent:decoded');
 
 			console.log('\ntorrent: [file: %s] [name: %s]', filepath, instance.infomation.info.name);
 
@@ -90,6 +68,7 @@ exports.create = function Torrent (filepath, callback) {
 			var callback = this;
 			Downloader.create(instance, function (error, downloader) {
 				instance.downloader = downloader;
+				instance.emit('downloader:ready');
 				callback(error);
 			});
 		},
@@ -98,6 +77,7 @@ exports.create = function Torrent (filepath, callback) {
 			var callback = this;
 			PieceManager.create(instance, function(error, manager) {
 				instance.pieceManager = manager;
+				instance.emit('piece_manager:ready');
 				callback (error);
 			});
 		},
@@ -105,6 +85,7 @@ exports.create = function Torrent (filepath, callback) {
 			if (error) throw error;
 			var callback = this;
 			instance.fileManager.initialize(function (error, manager) {
+				instance.emit('file_manager:ready');
 				callback (error);
 			});
 		},
@@ -113,6 +94,7 @@ exports.create = function Torrent (filepath, callback) {
 			var callback = this;
 			TrackerManager.create(instance, function(error, manager) {
 				instance.trackerManager = manager;
+				instance.emit('tracker_manager:ready');
 				callback (error);
 			});
 		},
@@ -122,6 +104,7 @@ exports.create = function Torrent (filepath, callback) {
 
 			PeerManager.create(instance, function(error, manager) {
 				instance.peerManager = manager;
+				instance.emit('peer_manager:ready');
 				callback (error);
 			});
 		},
