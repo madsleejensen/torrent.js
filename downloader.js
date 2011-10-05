@@ -1,52 +1,31 @@
 var Events = require('events');
 var Config = require('./config');
+var U = require('U');
 
 /**
  * Responsible for taking a @file instance and allowing peers to request blocks within that file's range to be downloaded.
  * This class could be modified to return blocks in the "rarest" first order instead of sequential.
  */
 
-exports.create = function Downloader (torrent, callback) {
+exports.create = function Downloader (torrent, file) {
 	var instance = new Events.EventEmitter();
-	instance.currentFile = null;
+	instance.file = file;
 	instance.isDownloading = false;
-	var mInterval = null;
 
-	instance.download = function (file) {
-		torrent.trackerManager.start();
-
-		instance.currentFile = file;
-		instance.currentFile.on('file:completed', onFileCompleted);
-
-		if (mInterval != null) {
-			clearInterval(mInterval);
-			mInterval = null;
-		}
-
-		// make sure all active peers always working on something.
-		mInterval = setInterval(function() {
-			if (torrent.peerManager.getActive().length < 1) {
-				return;		
-			}
-
-			torrent.peerManager.getActive().forEach(function(peer) {
-				instance.addPeerBlockRequests (peer);
-			});
-		}, 500);
-
-		instance.isDownloading = true;
-	};
+	// list of blocks that are currently being requested by this downloader.
+	instance.activeBlocks = [];
 
 	function onFileCompleted () {
-		console.log('downloader: [file: %s] completed', instance.currentFile.path);
+		console.log('downloader: [file: %s] completed', instance.file.path);
 		instance.isDownloading = false;
-		torrent.trackerManager.stop();
-		clearInterval(mInterval);
-		mInterval = null;
 	}
 
 	// queue up block requests on a peer.
 	instance.addPeerBlockRequests = function (peer) {
+		if (!file.isActive()) {
+			return;
+		}
+
 		var slots = peer.getRequestSlotsAvailable();
 		if (slots <= 0) {
 			return;
@@ -54,13 +33,25 @@ exports.create = function Downloader (torrent, callback) {
 
 		var blocks = instance.getNextBlocks(peer, slots);
 		blocks.forEach(function (block) {
-			block.peers.push(peer);
-			peer.download(block);
+			var succes = peer.download(block, instance);
+			if (succes) {
+				if (instance.activeBlocks.indexOf(block) === -1) {
+					instance.activeBlocks.push(block);
+					block.once('block:completed', function () {
+						U.array.remove(instance.activeBlocks, block);
+					});
+				}
+						
+				block.peers.push(peer);
+			}
 		});
 	}
 
+	/**
+	 * This is the logic used to determine the order in which blocks should be downloaded.
+	 */
 	instance.getNextBlocks = function (peer, limit) {
-		if (instance.currentFile === null) {
+		if (instance.file === null) {
 			throw new Error('Downloader: no file selected for download.');
 		}
 
@@ -82,6 +73,11 @@ exports.create = function Downloader (torrent, callback) {
 
 			for (var index = 0; index < blocks.length && limit > 0; index++) {
 				var block = blocks[index];
+
+				if (block.peers.indexOf(peer) !== -1) {
+					continue; // peer is already requesting this block.
+				}
+
 				result.push(block);
 				limit--;
 			}
@@ -97,8 +93,8 @@ exports.create = function Downloader (torrent, callback) {
 			return;
 		}
 
-		for (var i = 0; i < instance.currentFile.downloadItems.length; i++) {
-			var item = instance.currentFile.downloadItems[i];
+		for (var i = 0; i < instance.file.downloadItems.length; i++) {
+			var item = instance.file.downloadItems[i];
 			
 			if (item.completed) {
 				continue;
@@ -118,9 +114,10 @@ exports.create = function Downloader (torrent, callback) {
 
 	};
 
+	file.once('file:completed', onFileCompleted);
 	torrent.once('peer_manager:ready', function () {
 		torrent.peerManager.on('active_peers_count:changed', adjustBlocksPeerLimit);	
 	});
 
-	callback(null, instance);
+	return instance;
 };

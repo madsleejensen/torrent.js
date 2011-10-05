@@ -1,0 +1,33 @@
+ @todo
+ 	
+ 	:download speed.
+	 	-find a range by the number of active connections you have. to determine how many unique blocks should be requested at a time.
+	 	-find and sort the active connections by "round trip time". 
+	 	-instead of filling each block from a-z list of active connections iterate over one at a time, that way each block in the current range will most likely get a good connection (sorted by RTT).
+	 	-peers that do not have blocks that is in the current range should just download whatever block they have that is required by the current @file.
+	 	-lower the amount of active connections to something like (100-150 maximum).
+	 	-make logic to determine how many active requests a peer can have, determined by the avarage request respond time.
+
+	 	-make a priority list inside the downloader, that takes blocks that has not been recieved within a given amount of time, so that the downloader can prioritize that before other blocks. (if block.chunk < newblock.chunk).		
+
+ 	-split active connections into list of "choked" and "unchoked" to make the iteration process lower.
+ 
+ 	-make it possible for the systemt to increase the maximum number of allowed peers pr. block.
+ 		- set a limit on how "far" it should attempt to download pieces, that way you get more active peers you can use for downloading the important pieces.
+ 		- prioritise best connection (determine the download speed).
+ 			-good connections can have much more active requests than now (like 40-50). use Wireshark to see how uTorrent is handling queuing.
+
+ 	:memory
+		-make file storage work.
+			-on each block store the a timestamp for when it was downloaded and run a interval to persist them into files after a given periode.
+		-lazy load the creation of block specifications.
+		-refactor the most used instances, away from the module pattern and into a prototype pattern to save memory.
+		-the stream destinations on a @file download gets tampered with data instead there should be a delay so we dont have all that data waiting in the socket's buffer.
+
+ 	-add DHT support.
+ 	- make peer exchange support http://da.wikipedia.org/wiki/Peer_exchange
+ 	- make http://en.wikipedia.org/wiki/Local_Peer_Discovery
+ 	-add fast peer support.
+
+ 	-download is not safe, because partial pieces and not validated because not all blocks are downloaded.
+ 	-(facebook ticker integration :)  ... "Mads is watching ..... click to watch.".

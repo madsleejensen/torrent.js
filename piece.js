@@ -74,6 +74,7 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 				if (!valid) { // curropted data reset piece.
 					instance.blocks.reset();
 					instance.completed = false;
+					console.log('PIECE INVALID !!!!! ', instance.index, valid);
 				}
 				else {
 					instance.completed = true;

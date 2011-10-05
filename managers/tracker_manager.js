@@ -22,7 +22,7 @@ exports.create = function TrackerManager (torrent, callback) {
 			tracker.on('new_peers', function (peers) {
 				onPeersReceived(null, peers);
 			});
-			tracker.start(torrent.infomation);
+			tracker.start(torrent);
 		});
 
 		//setInterval(instance.forceStart, 8000);
@@ -32,11 +32,12 @@ exports.create = function TrackerManager (torrent, callback) {
 		instance.trackers.forEach(function (tracker) {
 			tracker.stop();
 		});
+		instance.started = false;
 	};
 
 	// Force tracker update, that does not take 'min-inteval' into account.
 	instance.forceStart = function () {
-		console.log('force-start');
+		// console.log('force-start');
 		instance.trackers.forEach(function(tracker) {
 			tracker.forceUpdate();
 		});
@@ -49,7 +50,7 @@ exports.create = function TrackerManager (torrent, callback) {
 
 	function createTracker (uri) {
 		var info = Url.parse(uri);
- 		
+
 		switch (info.protocol) {
 			case 'http:':
 				return HttpTracker.create(info);

@@ -2,6 +2,7 @@ var Events = require ('events');
 var Step = require('step');
 var TaskQueue = require('./taskqueue');
 var DownloadItem = require('./download_item');
+var Downloader = require('./downloader');
 var U = require('U');
 /**
  * Represent a file to be downloaded, as described in the *.torrent file. File data specifications are created as @download_item instances.
@@ -13,10 +14,30 @@ module.exports = function (torrent, path, length, requirements) {
 	instance.requirements = requirements;
 	instance.completed = false;
 	instance.downloadItems = [];
+	instance.downloader = null;
+	instance.activeConnections = [];
 
-	instance.download = function () {
+	instance.download = function (destination) {
 		console.log('downloading: [file: %s] [size: %s]', instance.path, instance.length);
-		torrent.downloader.download(instance);
+
+		if (instance.downloader === null) {
+			instance.downloader = Downloader.create(torrent, instance);
+		}
+
+		if (instance.activeConnections.indexOf(destination) === -1) {
+			instance.activeConnections.push(destination);
+			instance.pipe(destination);
+		}
+
+		onDownloadItemCompleted(); // check if file already been downloaded.
+	};
+
+	instance.cancel = function (destination) {
+		U.array.remove(instance.activeConnections, destination);
+	};
+
+	instance.isActive = function () {
+		return (instance.activeConnections.length > 0);
 	};
 
 	/**

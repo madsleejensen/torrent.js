@@ -7,13 +7,13 @@ module.exports = {
 		UDP_REQUEST_TIMEOUT: 5000
 	},
 	
-	MAXIMUM_ACTIVE_PEERS: -1, // -1 == unlimited
-	MAXIMUM_CONNECTING_PEERS: 150,
+	MAXIMUM_ACTIVE_PEERS: 400, // -1 == unlimited
+	MAXIMUM_CONNECTING_PEERS: 100,
 	MAXIMUM_CONNECTION_ATTEMPTS: 2,
 	SECONDS_BETWEEN_CONNECTION_ATTEMPTS: 5,
 
 	Blocks: {
-		MAXIMUM_ASSIGNED_PEERS: 5
+		MAXIMUM_ASSIGNED_PEERS: 3
 	},
 	Downloader: {
 		DOWNLOAD_ITEMS_LOOK_AHEAD: 5 // How many download items the downloader should find peers for.
@@ -21,6 +21,6 @@ module.exports = {
 	Peer: {
 		CONNECTION_TIMEOUT: 5000,
 		MAXIMUM_PIECE_CHUNK_REQUESTS: 8, // number of chunk requests pr. peer. (http://wiki.theory.org/Talk:BitTorrentSpecification#Algorithms:_Queuing)
-		REQUEST_TIMEOUT: 3500 // timeout on request sent by the peer.
+		REQUEST_TIMEOUT: 5500 // timeout on request sent by the peer.
 	}
 };

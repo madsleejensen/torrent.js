@@ -25,16 +25,44 @@ exports.create = function (torrent, callback) {
 	};
 	
 	// return peers that at the moment has slots available for requests.
-	instance.getFreePeers = function () {
-		return U.array.find(mActivePeers, function(peer) {
-			return peer.hasRequestSlotsAvailable();
+	instance.getFreeActivePeers = function () {
+		var peers = U.array.find(mActivePeers, function(peer) {
+			return !peer.choked && peer.getRequestSlotsAvailable() > 0;
 		});
+
+		peers.sort(sortByAvarageRespondTime);
+		
+		return peers;
 	};
-	
+
+	/**
+	 * Sort active peers by avarage respond time (ASC).
+	 * Peers that has not yet determined their avarage respond time will be listed last.
+	 */
+	function sortByAvarageRespondTime (peer, compare) {
+		if (peer.stats.avarageRespondTime === null) { // no respond time.
+			return 1;
+		}
+		if (compare.stats.avarageRespondTime === null) { // no respond time.
+			return -1;
+		}
+
+		if (peer.stats.avarageRespondTime < compare.stats.avarageRespondTime) {
+			return -1;
+		}
+		if (peer.stats.avarageRespondTime > compare.stats.avarageRespondTime) {
+			return 1;
+		}
+		
+		return 0;	
+	}
+
 	instance.add = function (peers) {
 		if (peers == null || peers.length < 1) {
 			return;
 		}
+
+		var firstRun = (mPeers.length === 0);
 
 		peers.forEach(function(peer) {
 			for (var index in mPeers) {
@@ -46,6 +74,10 @@ exports.create = function (torrent, callback) {
 			mPeers.push(peer);
 			mNewPeers.push(peer);
 		});
+
+		if (firstRun) { // first run.
+			displayStats();
+		}
 
 		//console.log('peers: [unique: %d] [new: %d] [connecting: %d] [active: %d]', mPeers.length, mNewPeers.length, mConnectingPeers.length, mActivePeers.length);
 		onNewPeersAvailable();
@@ -127,11 +159,15 @@ exports.create = function (torrent, callback) {
 		}
 	}
 
+	function displayStats () {
+		if (torrent.isActive) {
+			console.log('peers: [unique: %d] [new: %d] [connecting: %d] [active: %d]', mPeers.length, mNewPeers.length, mConnectingPeers.length, mActivePeers.length);
+		}
+	}
+
 	setInterval(reQueuePeers, Config.SECONDS_BETWEEN_CONNECTION_ATTEMPTS * 1000);
 	setInterval(notifyChangesInActivePeers, 500);
-	setInterval(function() { // just a bit of infomation.
-		console.log('peers: [unique: %d] [new: %d] [connecting: %d] [active: %d]', mPeers.length, mNewPeers.length, mConnectingPeers.length, mActivePeers.length);
-	}, 10000);
+	setInterval(displayStats, 5000);
 
 	callback (null, instance);
 };

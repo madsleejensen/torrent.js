@@ -62,7 +62,7 @@ exports.create = function HttpTracker (url) {
 
 		//console.log('(request): http://%s%s', url.hostname, url.pathname);
 
-		var options = createRequestOptions(mTorrent);
+		var options = createRequestOptions();
 		var request = Http.request(options, function(response) {
 			response.setEncoding('binary');
 
@@ -86,20 +86,21 @@ exports.create = function HttpTracker (url) {
 		request.end();	
 	}
 
-	function createRequestOptions (torrent) {
+	function createRequestOptions () {	
 		var data = {
-			peer_id: torrent.peer_id,
+			peer_id: mTorrent.infomation.peer_id,
 			port: 8123,
 			uploaded: 0,
 			downloaded: 0,
 			numwant: 1000,
-			compact: 1
+			compact: 1,
+			left: mTorrent.fileManager.getTotalFileSize()
 		};
 
 		return {
 			host: url.hostname,
 			port: url.port,
-			path: url.pathname + '?' + QueryString.stringify(data) + '&info_hash=' + U.buffer.encodeToHttp(torrent.info_hash_buffer),
+			path: url.pathname + '?' + QueryString.stringify(data) + '&info_hash=' + U.buffer.encodeToHttp(mTorrent.infomation.info_hash_buffer),
 			method: 'GET'
 		};
 	}
@@ -107,6 +108,10 @@ exports.create = function HttpTracker (url) {
 	function handleResponse (data) {
 		var peers = [];
 		data = Bencoder.decode(data);
+
+		if (!data) {
+			return onRequestCompleted ('tracker: no data recevied');
+		}
 
 		if (data['min interval']) {
 			mMinimumInterval = Math.max(5000, parseInt(data['min interval']) * 1000);

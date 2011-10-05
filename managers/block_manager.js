@@ -66,6 +66,12 @@ exports.create = function (torrent, piece, callback) {
 		return true;
 	};
 
+	instance.reset = function () {
+		instance.blocks.forEach(function(block) {
+			block.reset();
+		});
+	};
+
 	function createBlocks (callback) {
 		var offsets = [];
 		var chunks = Math.ceil(piece.length / instance.chunkSize);

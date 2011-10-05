@@ -4,7 +4,7 @@ var Step = require('step');
 
 module.exports = function Storage (torrent, callback) {
 	var instance = {};
-		instance.path = 'storage/' + torrent.infomation.info_hash + '/';
+		instance.path = './storage/' + torrent.infomation.info_hash + '/';
 
 	// takes a newly created piece object and inflate it with persisted data.
 	instance.inflate = function (piece, callback) {

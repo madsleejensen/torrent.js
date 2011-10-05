@@ -13,13 +13,18 @@ exports.create = function (torrent) {
 	// returns the accurate size of all the files combined.
 	instance.getTotalFileSize = function () {
 		if (instance.fileSize === null) {
-			var fileDescriptions = torrent.infomation.info.files;
-			var fileSize = 0;
-			fileDescriptions.forEach(function (description) {
-				fileSize += description.length;
-			});	
-			
-			instance.fileSize = fileSize;	
+			if (isSingleFileFormat()) {
+				instance.fileSize = torrent.infomation.info.length;	
+			}
+			else {
+				var fileDescriptions = torrent.infomation.info.files;
+				var fileSize = 0;
+				fileDescriptions.forEach(function (description) {
+					fileSize += description.length;
+				});	
+				
+				instance.fileSize = fileSize;	
+			}
 		}
 
 		return instance.fileSize;
@@ -30,17 +35,18 @@ exports.create = function (torrent) {
 		callback(null, instance);
 	};
 
+	// http://fileformats.wikia.com/wiki/Torrent_file
+	function isSingleFileFormat () {
+		return (typeof torrent.infomation.info.length !== 'undefined');
+	}
+
 	function createFiles () {
 		var files = [];
-		
 		console.log('files: ');
 
-		// http://fileformats.wikia.com/wiki/Torrent_file
-		if (typeof torrent.infomation.info.length != 'undefined') { // single file format;
-			console.log(torrent.infomation.info.length);
-
+		if (isSingleFileFormat()) { // single file format;
 			var description = {
-				path: torrent.infomation.info.name,
+				path: [torrent.infomation.info.name],
 				length: torrent.infomation.info.length,
 				fileOffset: 0
 			};

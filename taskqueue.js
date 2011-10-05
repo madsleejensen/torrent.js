@@ -11,7 +11,11 @@ module.exports = function TaskQueue () {
 
 	instance.run = function () {
 		runTask();
-	}
+	};
+
+	instance.cancel = function () {
+		mIsRunning = false;
+	};
 
 	function runTask () {
 		if (mTaskQueue.length < 1) {

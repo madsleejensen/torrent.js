@@ -10,14 +10,27 @@ module.exports = function peer (connectionInfo) {
 	instance.choked = false;
 	instance.hasBeenActive = false;
 	instance.failedAttempts = 0;
-	instance.lastAttemptDate = null;
 	instance.torrent = null;
+
+	instance.stats = {
+		avarageRespondTime: null, // ms
+		requestsCompleted: 0
+	};
+
 	instance.getAvailablePieces = function () {
 		return mPiecesAvailable;	
 	};
 
 	instance.getRequestSlotsAvailable = function () {
 		return 	mRequestingBlocks.length < Config.Peer.MAXIMUM_PIECE_CHUNK_REQUESTS;
+
+		/*
+		int maxRequests = PieceManager.NormalRequestAmount + (int)(id.Monitor.DownloadSpeed / 1024.0 / PieceManager.BonusRequestPerKb);
+        maxRequests = Math.Min(id.AmRequestingPiecesCount + 2, maxRequests);
+        maxRequests = Math.Min(id.MaxSupportedPendingRequests, maxRequests);
+        maxRequests = Math.Max(2, maxRequests);
+        id.MaxPendingRequests = maxRequests;
+        */
 	};
 
 	var mKeepAliveInterval;
@@ -86,7 +99,7 @@ module.exports = function peer (connectionInfo) {
 		}
 	};
 	
-	instance.download = function (block) {
+	instance.download = function (block, downloader) {
 		if (instance.choked ||
 			instance.connectionInfo.state == 'closed' || 
 			mRequestingBlocks.length >= Config.Peer.MAXIMUM_PIECE_CHUNK_REQUESTS) {
@@ -95,18 +108,17 @@ module.exports = function peer (connectionInfo) {
 
 		var track = { // used for timeout handling.
 			block: block,
+			downloader: downloader,
+			time: new Date().getTime(),
 			timeout: setTimeout (function () {
 				cleanupBlockTrack (track);
 			}, Config.Peer.REQUEST_TIMEOUT)
 		};
 
 		mRequestingBlocks.push(track);
-		
-		if (!block) {
-			console.log('empty block');
-		}
-
 		instance.sender.request(block.piece.index, block.begin, block.length);
+
+		return true;
 	};
 
 	instance.reset = function () {
@@ -126,12 +138,26 @@ module.exports = function peer (connectionInfo) {
 		U.array.remove(mRequestingBlocks, track);
 	}
 
+	function updateAvarageRespondTime (respondTime) {
+
+		instance.stats.requestsCompleted++;
+
+		if (respondTime !== instance.stats.avarageRespondTime) {
+			var delta = respondTime - instance.stats.avarageRespondTime;
+			var effect = delta / instance.stats.requestsCompleted;
+			instance.stats.avarageRespondTime += effect;
+			
+			//console.log(respondTime, delta, effect, instance.stats.avarageRespondTime)
+		}
+	}
+
 	var handlers = {
 		handshake_verified: function () {
 			//console.log("%s:%d -handshake verified", connectionInfo.ip_string, connectionInfo.port);
 		},
 		choke: function () {
 			instance.choked = true;
+			instance.emit(Message.CHOKE);
 		},
 		unchoke: function () {
 			instance.choked = false;
@@ -161,20 +187,20 @@ module.exports = function peer (connectionInfo) {
 		},
 		piece: function (index, begin, data) {
 			//console.log("block (index: %d) (begin: %d)", index, begin);
-			//console.log(data.toString('utf8'));
-			
 			var track = U.array.findOne(mRequestingBlocks, {'block.piece.index': index, 'block.begin': begin});
 
 			if (track) {
+				var respondTime = new Date().getTime() - track.time;
+				updateAvarageRespondTime (respondTime);
+
 				track.block.setValue(data);
 				track.block.peers.forEach(function (peer) {
 					peer.sender.cancel (track.block.piece.index, track.block.begin, track.block.length);						
 				});
 				
 				cleanupBlockTrack (track);
+				track.downloader.addPeerBlockRequests(instance); // @todo there can be a little delay here this could be optimized so no matter if track exists or not it should attempt to do new requests.
 			}
-
-			instance.torrent.downloader.addPeerBlockRequests(instance);
 		},
 		cancel: function () {
 		},

@@ -78,8 +78,8 @@ exports.create = function UDPTracker (url) {
 			connectionId.copy(message); // 64 bit.
 			message.writeInt32BE(ACTIONS.ANNOUNCE, 8); // 32 bit
 			message.writeInt32BE(createTransactionId(), 12); // 32 bit
-			instance.torrent.info_hash_buffer.copy(message, 16); // hash (20 bytes)
-			instance.torrent.peer_id_buffer.copy(message, 36); // peer (20 bytes)
+			instance.torrent.infomation.info_hash_buffer.copy(message, 16); // hash (20 bytes)
+			instance.torrent.infomation.peer_id_buffer.copy(message, 36); // peer (20 bytes)
 			message.writeInt32BE(0, 56) // downloaded (64 bit)
 			message.writeInt32BE(0, 64) // left (64 bit)
 			message.writeInt32BE(0, 72) // uploaded (64 bit)					

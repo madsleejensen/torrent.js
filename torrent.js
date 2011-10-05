@@ -22,7 +22,13 @@ exports.create = function Torrent (filepath, callback) {
 	instance.pieceManager = null;
 	instance.peerManager = null;
 	instance.trackerManager = null;
-	instance.downloader = null;
+	instance.fileManager = null;
+	instance.isActive = true; // LAV SÅ MANAGERS ER AFHÆNGIGE AF DENNE VÆRDI.
+
+	instance.setActive = function (active) {
+		instance.isActive = active;
+		instance.emit('torrent:active_state_changed');
+	};
 
 	// create a datastream, to start streaming the content of the torrent.
 	instance.createStream = function (destinationStream) {
@@ -37,6 +43,15 @@ exports.create = function Torrent (filepath, callback) {
 		});
 		return task;
 	};
+
+	function onActiveStateChanged () {
+		if (instance.isActive) {
+			instance.trackerManager.start();
+		}
+		else {
+			instance.trackerManager.stop();
+		}
+	}
 
 	Step ( // initialize
 		function decodeFile () {
@@ -61,16 +76,8 @@ exports.create = function Torrent (filepath, callback) {
 		},
 		function initStorage (error) {
 			if (error) throw error;
-			instance.storage = new Storage(instance, this);
-		},
-		function initDownloader (error) {
-			if (error) throw error;
-			var callback = this;
-			Downloader.create(instance, function (error, downloader) {
-				instance.downloader = downloader;
-				instance.emit('downloader:ready');
-				callback(error);
-			});
+			//instance.storage = new Storage(instance, this);
+			this(); //@todo
 		},
 		function initPieceManager (error) {
 			if (error) throw error;
@@ -86,6 +93,7 @@ exports.create = function Torrent (filepath, callback) {
 			var callback = this;
 			instance.fileManager.initialize(function (error, manager) {
 				instance.emit('file_manager:ready');
+
 				callback (error);
 			});
 		},
@@ -108,7 +116,66 @@ exports.create = function Torrent (filepath, callback) {
 				callback (error);
 			});
 		},
+		function runLoop (error) {
+			if (error) throw error;
+			
+			/*
+			file.download(stream);
+			stream.on('end', function() {
+				state.cancel(stream);
+			});
+			
+			1) @file indeholder en masse @download_items som specififcere hvilke blocks der er nødvendige.
+			2) @downloader står for at hente blocks specificeret af filens @download_items.
+			3) torrent står for at delegare alle aktive peers ud på forskellige @downloaders
+			4) hver @downloader holder styr på om den stadig er aktiv (om der er aktive forbindelser til den) ellers fjernes den fra torrent.activeDownloaders
+			5) når torrent.activeDownloaders == 0 så pauser den trackers osv.
+			*/
+			setInterval(function() {
+				
+				var files = U.array.find(instance.fileManager.files, function(file) { return file.isActive(); });
+				instance.setActive(files.length > 0);
+
+				if (instance.isActive) {
+					var peers = instance.peerManager.getFreeActivePeers();
+
+					/**
+					 * Spread the peers out on the active files.
+					 * peers are returned sorted by the lowest respondtime.
+					 * therefore we spread the good peers out on the files.
+					 */
+					for (var i = 0; i < peers.length; i++) {
+						// determine which file to assign to by modulus
+						var fileIndex = (fileIndex === 0) ? 0 : i % files.length;
+						var file = files[fileIndex];
+						var peer = peers[i];
+						file.downloader.addPeerBlockRequests(peer);
+					}
+
+					/* old implementation that surfed from, that the first file would always 
+					   get the best number (chunkSize) peers with the lowest avarageRespondTime. because of the splitting of peers.
+					
+					var chunkSize = Math.ceil(peers.length / files.length);
+					// split up all available active peers to do work on each active file.
+					for (var i = 0; i < files.length; i++) {
+						var file = files[i];
+		 				var offset = chunkSize * i;
+		 				var end = Math.min(offset + chunkSize, peers.length); // avoid overflow.
+
+		 				// queue up block requests to file.
+						for (var x = offset; x < end; x++) {
+							var peer = peers[x];
+							file.downloader.addPeerBlockRequests(peer);
+						}
+					}*/
+				}
+
+			}, 500);
+
+			this();
+		},
 		function complete (error) {
+			instance.on('torrent:active_state_changed', onActiveStateChanged);
 			callback(error, instance);
 		}
 	);
