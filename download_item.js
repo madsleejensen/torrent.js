@@ -39,6 +39,10 @@ module.exports = function (requirement) {
 							data = data.slice(0, length);
 						}
 
+						if (!data) {
+							return;
+						}
+
 						destination.write(data);
 						callback();
 					}));
