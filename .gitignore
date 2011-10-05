@@ -4,5 +4,4 @@ Icon?
 Thumbs.db
 storage/
 backup/
-examples/downloads/**/*
 dht/
