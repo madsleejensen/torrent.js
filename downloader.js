@@ -83,6 +83,12 @@ exports.create = function Downloader (torrent, file) {
 			}
 		}
 
+		/**
+		1) attempt to fill peer within the download range.	
+			1)
+		2) fill peer with anything that is required by the file download.
+		3) dont fill peer.
+		*/
 		return result;
 	};
 
