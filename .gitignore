@@ -5,5 +5,5 @@ Thumbs.db
 storage/
 backup/
 downloads/
-examples/downloads/
+examples/downloads/*.*
 dht/
