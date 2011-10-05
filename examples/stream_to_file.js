@@ -9,4 +9,7 @@ TorrentManager.get('./torrents/thor.torrent', function(error, torrent) {
 
 		file.download(outputStream);
 	}
+	else {
+		throw error;
+	}
 });

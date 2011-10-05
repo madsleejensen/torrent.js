@@ -6,6 +6,7 @@ module.exports = function Block (params) {
 	var instance = new Events.EventEmitter();
 	instance.piece = null;
 	instance.chunk = null;
+	instance.torrentChunk = null; // defines the chunk index for the entire @torrent file, and not just for the parent @piece.
 	instance.begin = null;
 	instance.length = null;
 	instance.data = null;
@@ -13,6 +14,7 @@ module.exports = function Block (params) {
 	instance.completed = false;
 	instance.peers = [];
 	instance.allowedPeerCount = Config.Blocks.MAXIMUM_ASSIGNED_PEERS;
+	instance.lastRequestTime = null;
 
 	instance.getValue = function (callback) {
 		if (!instance.completed) { // block has not yet been downloaded, listen for completed event.
@@ -67,7 +69,7 @@ module.exports = function Block (params) {
 	};
 
 	for (var member in params) { // initialize
-		instance[member] = params[member];		
+		instance[member] = params[member];
 	}
 
 	return instance;

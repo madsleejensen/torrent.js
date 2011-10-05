@@ -53,10 +53,21 @@ module.exports = function (requirement) {
 		return task;
 	};
 
-	instance.getFreeBlocks = function () {
+	instance.getFirstBlock = function () {
+		var blocks = hasPieceOffset() ? instance.blocks : instance.piece.blocks.blocks;
+		return blocks[0];
+	};
+
+	instance.getLastBlock = function () {
+		var blocks = hasPieceOffset() ? instance.blocks : instance.piece.blocks.blocks;
+		var index = blocks.length - 1;
+		return blocks[index];
+	};
+
+	instance.getInCompleteBlocks = function () {
 		var result = [];
 
-		if (instance.blocks === null) { // no specific blocks, means that the entire piece is required.
+		if (!hasPieceOffset()) { // no specific blocks, means that the entire piece is required.
 			return instance.piece.blocks.getMissing();
 		}
 		else {
@@ -64,16 +75,32 @@ module.exports = function (requirement) {
 				if (block.completed) {
 					return;
 				}
-				if (block.isFull()) {
-					return;
-				}
-				
+
 				result.push(block);
 			});
 		}
 		
 		return result;
 	};
+
+	instance.getFreeBlocks = function () {
+		var result = [];
+		var blocks = instance.getInCompleteBlocks();
+
+		blocks.forEach(function(block) {
+			if (block.isFull()) {
+				return;
+			}
+
+			result.push(block);
+		});
+		
+		return result;
+	};
+
+	function hasPieceOffset () {
+		return (requirement.offset);
+	}
 
 	function onCompleted () {
 		if (isCompleted()) {
@@ -98,7 +125,7 @@ module.exports = function (requirement) {
 		}
 	}
 
-	if (requirement.offset) {
+	if (hasPieceOffset()) {
 		instance.blocks = requirement.piece.blocks.getByRange(requirement.offset);
 		instance.blocks.forEach(function (block) {
 			block.once('block:completed', onCompleted);

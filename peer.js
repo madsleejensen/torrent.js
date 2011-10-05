@@ -106,14 +106,17 @@ module.exports = function peer (connectionInfo) {
 			return;
 		}
 
+		var requestTime = new Date().getTime();
 		var track = { // used for timeout handling.
 			block: block,
 			downloader: downloader,
-			time: new Date().getTime(),
+			time: requestTime,
 			timeout: setTimeout (function () {
 				cleanupBlockTrack (track);
 			}, Config.Peer.REQUEST_TIMEOUT)
 		};
+
+		block.lastRequestTime = requestTime;
 
 		mRequestingBlocks.push(track);
 		instance.sender.request(block.piece.index, block.begin, block.length);

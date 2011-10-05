@@ -22,5 +22,6 @@ module.exports = {
 		CONNECTION_TIMEOUT: 5000,
 		MAXIMUM_PIECE_CHUNK_REQUESTS: 8, // number of chunk requests pr. peer. (http://wiki.theory.org/Talk:BitTorrentSpecification#Algorithms:_Queuing)
 		REQUEST_TIMEOUT: 5500 // timeout on request sent by the peer.
+
 	}
 };

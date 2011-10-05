@@ -15,6 +15,17 @@ exports.create = function Downloader (torrent, file) {
 	// list of blocks that are currently being requested by this downloader.
 	instance.activeBlocks = [];
 
+	// create a block range that specify the start and end index for the entire file download.
+	// used to determine if the block should be prioritized. 
+	var firstBlock = instance.file.getFirstItem().getFirstBlock();
+	var lastBlock = instance.file.getLastItem().getLastBlock();
+
+	instance.blockRange = {
+		start: firstBlock.torrentChunk,
+		end: lastBlock.torrentChunk	
+	};
+	instance.currentBlock = instance.blockRange.start;
+
 	function onFileCompleted () {
 		console.log('downloader: [file: %s] completed', instance.file.path);
 		instance.isDownloading = false;
@@ -47,9 +58,7 @@ exports.create = function Downloader (torrent, file) {
 		});
 	}
 
-	/**
-	 * This is the logic used to determine the order in which blocks should be downloaded.
-	 */
+	// This is the logic used to determine the order in which blocks should be downloaded.
 	instance.getNextBlocks = function (peer, limit) {
 		if (instance.file === null) {
 			throw new Error('Downloader: no file selected for download.');
@@ -57,6 +66,7 @@ exports.create = function Downloader (torrent, file) {
 
 		var exclude = []; // list of items to ignore in next call to getNextAvailableItem();
 		var result = [];
+		var currentTime = new Date().getTime();
 
 		while (limit > 0) {
 			var item = instance.getNextAvailableItem(peer, exclude);
@@ -66,7 +76,7 @@ exports.create = function Downloader (torrent, file) {
 
 			exclude.push(item); // make sure we wont encounter the same item again in this iteration.
 
-			var blocks = item.getFreeBlocks();
+			var blocks = item.getInCompleteBlocks();
 			if (blocks.length <= 0) {
 				continue;
 			}
@@ -77,6 +87,17 @@ exports.create = function Downloader (torrent, file) {
 				if (block.peers.indexOf(peer) !== -1) {
 					continue; // peer is already requesting this block.
 				}
+
+				var timeSinceLastRequest = currentTime - block.lastRequestTime;
+				if (block.isFull()) {
+					
+					//@todo should be determined by the a algorithme that takes current block position. (and maybe if activeBlocks.length exceeds a certain limit).
+					if (timeSinceLastRequest < 2000) {
+						continue;
+					}
+				}
+				
+				block.lastRequestTime = currentTime;
 
 				result.push(block);
 				limit--;
@@ -116,14 +137,7 @@ exports.create = function Downloader (torrent, file) {
 		}
 	};
 
-	function adjustBlocksPeerLimit () {
-
-	};
-
 	file.once('file:completed', onFileCompleted);
-	torrent.once('peer_manager:ready', function () {
-		torrent.peerManager.on('active_peers_count:changed', adjustBlocksPeerLimit);	
-	});
 
 	return instance;
 };

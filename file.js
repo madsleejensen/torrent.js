@@ -32,6 +32,15 @@ module.exports = function (torrent, path, length, requirements) {
 		onDownloadItemCompleted(); // check if file already been downloaded.
 	};
 
+	instance.getFirstItem = function () {
+		return instance.downloadItems[0];
+	};
+
+	instance.getLastItem = function () {
+		var index = instance.downloadItems.length - 1;
+		return instance.downloadItems[index];
+	};
+
 	instance.cancel = function (destination) {
 		U.array.remove(instance.activeConnections, destination);
 	};

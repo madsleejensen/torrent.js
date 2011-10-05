@@ -46,9 +46,7 @@ exports.create = function (torrent, piece, callback) {
 			if (block.completed) {
 				return;
 			}
-			if (block.isFull()) {
-				return;
-			}
+
 			result.push(block);
 		});
 
@@ -84,6 +82,7 @@ exports.create = function (torrent, piece, callback) {
 			var block = new Block ({
 				piece: piece,
 				chunk: chunk,
+				torrentChunk: (chunks * piece.index) + chunk, // chunk index for the entire torrent file.
 				begin: begin,
 				length: length,
 				peers: []

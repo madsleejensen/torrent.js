@@ -9,7 +9,6 @@ exports.create = function (torrent) {
 	var instance = {};
 	instance.fileSize = null;
 	instance.files = null;
-
 	// returns the accurate size of all the files combined.
 	instance.getTotalFileSize = function () {
 		if (instance.fileSize === null) {
