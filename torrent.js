@@ -23,7 +23,7 @@ exports.create = function Torrent (filepath, callback) {
 	instance.peerManager = null;
 	instance.trackerManager = null;
 	instance.fileManager = null;
-	instance.isActive = true; // LAV SÅ MANAGERS ER AFHÆNGIGE AF DENNE VÆRDI.
+	instance.isActive = true;
 
 	instance.setActive = function (active) {
 		instance.isActive = active;
@@ -119,18 +119,6 @@ exports.create = function Torrent (filepath, callback) {
 		function runLoop (error) {
 			if (error) throw error;
 			
-			/*
-			file.download(stream);
-			stream.on('end', function() {
-				state.cancel(stream);
-			});
-			
-			1) @file indeholder en masse @download_items som specififcere hvilke blocks der er nødvendige.
-			2) @downloader står for at hente blocks specificeret af filens @download_items.
-			3) torrent står for at delegare alle aktive peers ud på forskellige @downloaders
-			4) hver @downloader holder styr på om den stadig er aktiv (om der er aktive forbindelser til den) ellers fjernes den fra torrent.activeDownloaders
-			5) når torrent.activeDownloaders == 0 så pauser den trackers osv.
-			*/
 			setInterval(function() {
 				
 				var files = U.array.find(instance.fileManager.files, function(file) { return file.isActive(); });

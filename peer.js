@@ -11,26 +11,21 @@ module.exports = function peer (connectionInfo) {
 	instance.hasBeenActive = false;
 	instance.failedAttempts = 0;
 	instance.torrent = null;
+	instance.maximumConcurrentRequests = Config.Peer.MAXIMUM_PIECE_CHUNK_REQUESTS;
 
 	instance.stats = {
 		avarageRespondTime: null, // ms
 		requestsCompleted: 0
 	};
 
+	var mLastMaximumRequestsAdjustment = null;
+
 	instance.getAvailablePieces = function () {
 		return mPiecesAvailable;	
 	};
 
 	instance.getRequestSlotsAvailable = function () {
-		return 	mRequestingBlocks.length < Config.Peer.MAXIMUM_PIECE_CHUNK_REQUESTS;
-
-		/*
-		int maxRequests = PieceManager.NormalRequestAmount + (int)(id.Monitor.DownloadSpeed / 1024.0 / PieceManager.BonusRequestPerKb);
-        maxRequests = Math.Min(id.AmRequestingPiecesCount + 2, maxRequests);
-        maxRequests = Math.Min(id.MaxSupportedPendingRequests, maxRequests);
-        maxRequests = Math.Max(2, maxRequests);
-        id.MaxPendingRequests = maxRequests;
-        */
+		return 	mRequestingBlocks.length < instance.maximumConcurrentRequests;
 	};
 
 	var mKeepAliveInterval;
@@ -149,8 +144,33 @@ module.exports = function peer (connectionInfo) {
 			var delta = respondTime - instance.stats.avarageRespondTime;
 			var effect = delta / instance.stats.requestsCompleted;
 			instance.stats.avarageRespondTime += effect;
-			
-			//console.log(respondTime, delta, effect, instance.stats.avarageRespondTime)
+				
+			// adjust the number of concurrent requests that is appropriate for this peer. 
+			var currentTime = new Date().getTime(); // used to limit the adjustment a bit.
+			if (mLastMaximumRequestsAdjustment === null || (currentTime - mLastMaximumRequestsAdjustment) > instance.stats.avarageRespondTime) {
+				var maxRequests = instance.maximumConcurrentRequests;
+
+				// if avarage respond time is higher than whats optimal, try lowering the amount of concurrent requests this peer has.
+				if (instance.stats.avarageRespondTime > Config.Peer.OPTIMAL_RESPONSE_TIME) {
+					var delta = Config.Peer.OPTIMAL_RESPONSE_TIME / instance.stats.avarageRespondTime;
+					var decreasePercentage = delta / 100
+					var decrease = Math.ceil(decreasePercentage * maxRequests);
+					/*
+					if (maxRequests > 8) {
+						console.log('\n\ndecrease\n\n',decrease,  decreasePercentage, maxRequests);
+					}*/
+
+					maxRequests -= decrease;
+					maxRequests = Math.max(Config.Peer.MINIMUM_PIECE_CHUNK_REQUESTS, maxRequests);
+				}
+				else {
+					maxRequests++;
+					//console.log('this is a super fast peer respond time: ', instance.stats.avarageRespondTime, instance.maximumConcurrentRequests, instance.connectionInfo.hex);
+				}
+
+				instance.maximumConcurrentRequests = maxRequests;
+				mLastMaximumRequestsAdjustment = currentTime;
+			}
 		}
 	}
 
