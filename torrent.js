@@ -6,7 +6,7 @@ var PieceManager = require('./managers/piece_manager');
 var PeerManager = require('./managers/peer_manager');
 var TrackerManager = require('./managers/tracker_manager');
 var FileManager = require('./managers/file_manager');
-var Storage = require('./storage');
+var StorageManager = require('./managers/storage_manager');
 var TaskQueue = require('./taskqueue');
 var U = require('U');
 var Downloader = require('./downloader');
@@ -18,7 +18,7 @@ var Events = require('events');
 exports.create = function Torrent (filepath, callback) {
 	var instance = new Events.EventEmitter();
 	instance.infomation = null; // decoded infomation from the *.torrent file.
-	instance.storage = null;
+	instance.storageManager = null;
 	instance.pieceManager = null;
 	instance.peerManager = null;
 	instance.trackerManager = null;
@@ -74,10 +74,13 @@ exports.create = function Torrent (filepath, callback) {
 			instance.fileManager = FileManager.create(instance);
 			this();
 		},
-		function initStorage (error) {
+		function initStorageManager (error) {
 			if (error) throw error;
-			//instance.storage = new Storage(instance, this);
-			this(); //@todo
+			var callback = this;
+			StorageManager.create(instance, function (error, manager) {
+				instance.storageManager = manager;
+				callback (error);
+			});
 		},
 		function initPieceManager (error) {
 			if (error) throw error;
@@ -93,7 +96,6 @@ exports.create = function Torrent (filepath, callback) {
 			var callback = this;
 			instance.fileManager.initialize(function (error, manager) {
 				instance.emit('file_manager:ready');
-
 				callback (error);
 			});
 		},

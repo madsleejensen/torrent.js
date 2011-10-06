@@ -77,7 +77,11 @@ module.exports = function (torrent, path, length, requirements) {
 		return task;
 	};
 
-	function onDownloadItemCompleted () {
+	function onDownloadItemCompleted (downloadItem) {
+		if (downloadItem) {
+			console.log('file: %s [item: %d] completed', instance.path, instance.downloadItems.indexOf(downloadItem));
+		}
+		
 		if (!U.array.contains(instance.downloadItems, {completed: false})) {
 			instance.emit('file:completed', instance);
 		}

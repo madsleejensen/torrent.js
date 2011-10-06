@@ -24,5 +24,8 @@ module.exports = {
 		MINIMUM_PIECE_CHUNK_REQUESTS: 2,
 		REQUEST_TIMEOUT: 5500, // timeout on request sent by the peer.
 		OPTIMAL_RESPONSE_TIME: 320 
+	},
+	Memory: {
+		
 	}
 };

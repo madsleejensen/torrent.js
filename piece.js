@@ -13,16 +13,26 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 	instance.blocks = null;
 	instance.completed = false;
 	instance.hash = hash;
+	instance.storage = 'memory';
 
 	instance.createStreamQueue = function (destination) {
 		var task = new TaskQueue();
 
-		if (instance.completed) {
+		if (instance.storage === 'file') {
 			task.queue (function (callback) {
-				instance.getValue(function(error, data) {
-					destination.write(data);
-					callback();
-				});
+				torrent.storageManager.getPieceStream(instance, function(error, stream) {
+					if (error) {
+						console.log(error.message, error.stack);
+						return;
+					}
+
+					stream.on('end', function () {
+						//stream.destroy();
+						callback();
+					});
+
+					stream.pipe(destination, {end: false});
+				});		
 			});
 		}
 		else {	
@@ -40,7 +50,7 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 		return task;
 	};
 
-	instance.getValue = function (callback) {
+	instance.combineBlockValues = function (callback) {
 		if (!instance.completed) {
 			throw new Error('piece.getValue() called in incomplete piece. [index: %d]', piece.index);
 		}
@@ -53,7 +63,6 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 			total += block.data.length;
 		}
 
-		//console.log('piece: [length: %d] [actual-lenght: %d]', instance.length, total);
 		callback(null, buffer);
 	}
 
@@ -62,14 +71,13 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 			return;
 		}
 
-		console.log('block [index: %d][chunk: %d] completed', block.piece.index, block.chunk);
-
+		// console.log('block [index: %d][chunk: %d] completed', block.piece.index, block.chunk);
 		if (instance.blocks.isAllCompleted()) {
 			instance.completed = true; // mark as completed while validating to download as much as possible.
-			console.log('piece: [index: %d] completed', instance.index);
+			//console.log('piece: [index: %d] completed', instance.index);
 
 			isValid(function (error, valid) {
-				console.log('piece-validation: [index: %d] [valid: %d]', instance.index, valid);
+				//console.log('piece-validation: [index: %d] [valid: %d]', instance.index, valid);
 
 				if (!valid) { // curropted data reset piece.
 					instance.blocks.reset();
@@ -79,23 +87,27 @@ exports.create = function Piece (torrent, index, hash, length, callback) {
 				else {
 					instance.completed = true;
 					instance.emit("piece:completed", instance);
+
+					// persist file away from memory.
+					torrent.storageManager.savePiece(instance, function (error) {
+						instance.storage = 'file';
+						instance.blocks.reset();
+						instance.blocks = null;
+					});;
 				}
 			});
 		}
 	};
 
 	function isValid (callback) {
-		instance.getValue(function (error, buffer) {
+		instance.combineBlockValues(function (error, buffer) {
 			var sha1 = Crypto.createHash('sha1');
 			sha1.update(buffer.toString('binary'));
 
 			var hash = sha1.digest('binary');
-
-			//console.log("isvalid: %s vs %s", hash, instance.hash);
-
 			var valid = (hash == instance.hash);
 
-			callback (null, valid)
+			callback (null, valid);
 		});
 	}
 	
