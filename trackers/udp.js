@@ -1,6 +1,6 @@
 var UDP = require("dgram");
 var Bencoder = require('bencoder');
-var Compact = require('./../compact');
+var Compact = require('compact');
 var Peer = require('./../peer');
 var Events = require("events");
 var Config = require('./../config');

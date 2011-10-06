@@ -41,7 +41,6 @@ module.exports = function Block (params) {
 		instance.completed = true;
 		instance.data = data;
 		instance.emit('block:completed', instance);
-		instance.removeAllListeners(); // cleanup.
 		//console.log('block [index: %d][chunk: %d] completed',instance.piece.index, instance.chunk);
 	};
 

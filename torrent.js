@@ -9,7 +9,6 @@ var FileManager = require('./managers/file_manager');
 var StorageManager = require('./managers/storage_manager');
 var TaskQueue = require('./taskqueue');
 var U = require('U');
-var Downloader = require('./downloader');
 var Events = require('events');
 
 /**
@@ -28,20 +27,6 @@ exports.create = function Torrent (filepath, callback) {
 	instance.setActive = function (active) {
 		instance.isActive = active;
 		instance.emit('torrent:active_state_changed');
-	};
-
-	// create a datastream, to start streaming the content of the torrent.
-	instance.createStream = function (destinationStream) {
-		var task = new TaskQueue();
-		// queue up piece tasks.
-		instance.pieceManager.pieces.forEach(function(piece) {
-			task.queue(function (callback) {
-				var pieceStream = piece.createStream(destinationStream);
-				pieceStream.on('end', callback); 
-				pieceStream.run();
-			});
-		});
-		return task;
 	};
 
 	function onActiveStateChanged () {
@@ -141,23 +126,6 @@ exports.create = function Torrent (filepath, callback) {
 						var peer = peers[i];
 						file.downloader.addPeerBlockRequests(peer);
 					}
-
-					/* old implementation that surfed from, that the first file would always 
-					   get the best number (chunkSize) peers with the lowest avarageRespondTime. because of the splitting of peers.
-					
-					var chunkSize = Math.ceil(peers.length / files.length);
-					// split up all available active peers to do work on each active file.
-					for (var i = 0; i < files.length; i++) {
-						var file = files[i];
-		 				var offset = chunkSize * i;
-		 				var end = Math.min(offset + chunkSize, peers.length); // avoid overflow.
-
-		 				// queue up block requests to file.
-						for (var x = offset; x < end; x++) {
-							var peer = peers[x];
-							file.downloader.addPeerBlockRequests(peer);
-						}
-					}*/
 				}
 
 			}, 500);

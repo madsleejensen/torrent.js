@@ -31,7 +31,6 @@ exports.create = function (torrent, piece, callback) {
 		}
 
 		var result = [];
-
 		for (var chunk = blockStart; chunk <= blockEnd; chunk++) {
 			result.push(instance.blocks[chunk]);
 		}
