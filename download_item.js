@@ -10,11 +10,13 @@ module.exports = function (requirement) {
 	instance.offset = requirement.offset;
 	instance.piece = requirement.piece;
 	instance.completed = false;
+	instance.bytesCompleted = null;
+	instance.bytesTotal = null;
 
 	instance.createStreamQueue = function (destination) {
 		var task = new TaskQueue();
 
-		if (!instance.blocks) {
+		if (!hasPieceOffset()) {
 			task.queue (function (callback) {
 				var pieceQueue = instance.piece.createStreamQueue(destination);
 				pieceQueue.on('end', function () {
@@ -103,6 +105,8 @@ module.exports = function (requirement) {
 	}
 
 	function onCompleted () {
+		instance.bytesCompleted = calculateBytesCompleted(true);
+
 		if (isCompleted()) {
 			instance.completed = true;
 			instance.emit('download_item:completed', instance);
@@ -125,15 +129,37 @@ module.exports = function (requirement) {
 		}
 	}
 
+	function calculateBytesCompleted (sequenceOnly) {
+		var bytes = 0;
+		var blocks = hasPieceOffset() ? instance.blocks : instance.piece.blocks.blocks;
+		
+		for (var i = 0; i < blocks.length; i++) {
+			if (!blocks[i].completed && sequenceOnly) {
+				break;
+			}
+
+			bytes += blocks[i].length;
+		}
+
+		return bytes;
+	}
+
 	if (hasPieceOffset()) {
 		instance.blocks = requirement.piece.blocks.getByRange(requirement.offset);
 		instance.blocks.forEach(function (block) {
-			block.once('block:completed', onCompleted);
+			if (!block.completed) {
+				block.once('block:completed', onCompleted);		
+			}
 		});
+
+		instance.bytesTotal = instance.blocks.length * instance.blocks[0].length; // total length in bytes.
 	}
 	else {
 		requirement.piece.on('piece:completed', onCompleted);
+		instance.bytesTotal = instance.piece.length;
 	}
+
+	instance.bytesCompleted = calculateBytesCompleted(true);
 
 	return instance;	
 };

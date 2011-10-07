@@ -16,7 +16,8 @@ module.exports = function (torrent, path, length, requirements) {
 	instance.downloadItems = [];
 	instance.downloader = null;
 	instance.activeConnections = [];
-
+	instance.bytesCompleted = 0;
+	
 	instance.download = function (destination) {
 		console.log('downloading: [file: %s] [size: %s]', instance.path, instance.length);
 
@@ -78,13 +79,32 @@ module.exports = function (torrent, path, length, requirements) {
 	};
 
 	function onDownloadItemCompleted (downloadItem) {
+		instance.bytesCompleted = calculateBytesCompleted();
+
 		if (downloadItem) {
-			console.log('file: %s [item: %d] completed', instance.path, instance.downloadItems.indexOf(downloadItem));
+			var percentage = Math.round((instance.length / instance.bytesCompleted) * 100);
+			var index = instance.downloadItems.indexOf(downloadItem);
+			console.log('file: %s downloaded [item: %d] (%d % completed) [total: %d kb] [completed: %d kb]', instance.path, index, percentage, Math.round(instance.length / 1024), Math.round(instance.bytesCompleted / 1024));
 		}
 		
 		if (!U.array.contains(instance.downloadItems, {completed: false})) {
 			instance.emit('file:completed', instance);
 		}
+	}
+
+	function calculateBytesCompleted() {
+		var bytes = 0;
+		for (var i = 0; i < instance.downloadItems.length; i++) {
+			var item = instance.downloadItems[i];
+			
+			bytes += item.bytesCompleted;
+
+			if (!item.completed) {
+				break;
+			}
+		}
+
+		return Math.min(bytes, instance.length);
 	}
 
 	Step(
