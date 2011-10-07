@@ -31,3 +31,25 @@
 
  	-download is not safe, because partial pieces and not validated because not all blocks are downloaded.
  	-(facebook ticker integration :)  ... "Mads is watching ..... click to watch.".
+
+
+ 	:statistics
+ 		-memory usage
+ 		-active torrents.
+ 			-torrent
+ 				-trackers
+ 					-peer count.
+ 					-last update.
+
+ 				-peers
+ 					-avarage respond time.
+ 					-ip / port 
+
+ 				-files
+ 					-download items
+ 						-blocks 
+ 						
+ 				-downloads
+ 					-progress
+ 					-file
+ 					-destination

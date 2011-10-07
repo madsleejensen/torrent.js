@@ -3,6 +3,7 @@ var Events = require('events');
 var Message = require("./message");
 var U = require('U');
 var Config = require('./config');
+var SpeedCalculator = require('./speed_calculator');
 
 module.exports = function peer (connectionInfo) {
 	var instance = new Events.EventEmitter();
@@ -15,7 +16,8 @@ module.exports = function peer (connectionInfo) {
 
 	instance.stats = {
 		avarageRespondTime: null, // ms
-		requestsCompleted: 0
+		requestsCompleted: 0,
+		download: null,
 	};
 
 	var mLastMaximumRequestsAdjustment = null;
@@ -65,7 +67,7 @@ module.exports = function peer (connectionInfo) {
 				instance.sender.keepAlive();
 			}, 3000);
 
-			instance.connectionInfo.state = 'active';
+			instance.connectionInfo.state = 'awaiting_handshake_verification';
 			instance.hasBeenActive = true;
 			instance.emit('peer:state_changed', instance);
 			instance.sender.handshake(torrent);
@@ -74,7 +76,6 @@ module.exports = function peer (connectionInfo) {
 		
 		function onClose(error) {
 			if (mKeepAliveInterval != null) {
-				//console.log("peer: %s:%d -closed", connectionInfo.ip_string, connectionInfo.port);
 				clearInterval(mKeepAliveInterval);
 				mKeepAliveInterval = null;
 			}
@@ -90,6 +91,11 @@ module.exports = function peer (connectionInfo) {
 			if (mSocket != null) {
 				mSocket.destroy();
 				mSocket = null;
+			}
+
+			if (instance.stats.download !== null) {
+				instance.stats.download.destroy();
+				instance.stats.download = null;	
 			}
 		}
 	};
@@ -172,10 +178,13 @@ module.exports = function peer (connectionInfo) {
 				mLastMaximumRequestsAdjustment = currentTime;
 			}
 		}
-	}
+	};
 
 	var handlers = {
 		handshake_verified: function () {
+			instance.stats.download = new SpeedCalculator();
+			instance.connectionInfo.state = 'active';
+			instance.emit('peer:state_changed', instance);
 			//console.log("%s:%d -handshake verified", connectionInfo.ip_string, connectionInfo.port);
 		},
 		choke: function () {
@@ -210,6 +219,8 @@ module.exports = function peer (connectionInfo) {
 		},
 		piece: function (index, begin, data) {
 			//console.log("block (index: %d) (begin: %d)", index, begin);
+			instance.stats.download.addBytes(data.length);
+			
 			var track = U.array.findOne(mRequestingBlocks, {'block.piece.index': index, 'block.begin': begin});
 
 			if (track) {
@@ -279,6 +290,7 @@ module.exports = function peer (connectionInfo) {
 
 			//console.log("%s:%d: [request] %d", connectionInfo.ip_string, connectionInfo.port, index, begin);
 			instance.sender.send(message);
+
 		},
 		send: function (buffer) {
 			if (mSocket != null) {

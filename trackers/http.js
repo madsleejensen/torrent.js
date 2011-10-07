@@ -12,6 +12,7 @@ exports.create = function HttpTracker (url) {
 	var instance = new Events.EventEmitter();
 	instance.url = url;
 	instance.failed_attempts = 0;
+	instance.peerCount = 0;
 
 	var mMinimumInterval = 60 * 1000;
 	var mTorrent;
@@ -126,7 +127,7 @@ exports.create = function HttpTracker (url) {
 		}
 
 		// console.log('(response): http://%s%s ( %d peers received ) will refresh in %d seconds', url.hostname, url.pathname, peers.length, mMinimumInterval / 1000);
-
+		instance.peerCount += peers.length;
 		instance.failed_attempts = 0;
 		instance.emit('new_peers', peers);
 	}

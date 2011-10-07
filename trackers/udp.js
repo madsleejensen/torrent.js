@@ -28,6 +28,7 @@ exports.create = function UDPTracker (url) {
 	var instance = new Events.EventEmitter();
 	instance.url = url;
 	instance.failed_attempts = 0;
+	instance.peerCount = 0;
 	instance.socket = UDP.createSocket('udp4');
 
 	var mTimeout = null;
@@ -145,6 +146,7 @@ exports.create = function UDPTracker (url) {
 					instance.forceUpdate();
 				}, mMinimumInterval);
 
+				instance.peerCount += peers.length;
 				instance.failed_attempts = 0;
 				instance.emit('new_peers', peers);
 			break;
