@@ -19,6 +19,8 @@ var EVENTS = {
 	STOPPED: 3
 };
 
+exports.LISTENING_PORT = Config.Tracker.UDP_LISTENING_PORT_RANGE.start;
+
 // http://www.rasterbar.com/products/libtorrent/udp_tracker_protocol.html#actions
 // http://www.bittorrent.org/beps/bep_0015.html
 exports.create = function UDPTracker (url) {
@@ -33,6 +35,7 @@ exports.create = function UDPTracker (url) {
 	var mWorking = false; // to prevent multiple requests going on at the same time.
 	var mWorkingTimeout = null;
 	var mIsActive = false;
+	var mPort = exports.LISTENING_PORT;
 
 	instance.start = function (torrent) {
 		mIsActive = true;
@@ -87,7 +90,7 @@ exports.create = function UDPTracker (url) {
 			message.writeUInt32BE(0, 84) // IP (32bit) 0 == sender ip
 			message.writeUInt32BE(0, 88) // key (32bit)
 			message.writeInt32BE(-1, 92) // num_want (32bit) (-1 == default)
-			message.writeUInt16BE(Config.Tracker.LISTENING_PORT, 96) // port
+			message.writeUInt16BE(mPort, 96) // port
 			message.writeUInt16BE(0, 98) // extensions
 
 			instance.socket.send(message, 0, message.length, instance.url.port, instance.url.hostname);
@@ -152,7 +155,12 @@ exports.create = function UDPTracker (url) {
 		}
 	});
 
-	instance.socket.bind(Config.Tracker.LISTENING_PORT);
+	instance.socket.bind(mPort);
+	exports.LISTENING_PORT++;
+
+	if (exports.LISTENING_PORT > Config.Tracker.UDP_LISTENING_PORT_RANGE.end) {
+		throw new Error('UDP Tracker ran out of listening ports.');
+	}
 
 	return instance;
 };

@@ -3,7 +3,7 @@ module.exports = {
 	
 	Tracker: {
 		MAXIMUM_FAILED_ATTEMPTS: 3,
-		LISTENING_PORT: 8111,
+		UDP_LISTENING_PORT_RANGE: {start: 8111, end: 8800},
 		UDP_REQUEST_TIMEOUT: 5000
 	},
 	
